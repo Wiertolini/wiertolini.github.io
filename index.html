@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>SOPS · sprawdzanie odpowiedzi · tryb ciemny · panel boczny</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #000000;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #f5f5f7;
+            padding: 20px;
+            line-height: 1.4;
+        }
+
+        /* layout z panelem bocznym */
+        .app-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+
+        /* panel boczny (lista pytań) */
+        .sidebar {
+            flex: 0 0 160px;
+            background: #1c1c1e;
+            border-radius: 28px;
+            padding: 16px 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            border: 0.5px solid #2c2c2e;
+            position: sticky;
+            top: 20px;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+        .sidebar h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #8e8e93;
+            text-align: center;
+            margin-bottom: 16px;
+            letter-spacing: 0.3px;
+        }
+        .question-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .q-item {
+            background: #2c2c2e;
+            text-align: center;
+            padding: 8px 4px;
+            border-radius: 40px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: 0.1s ease;
+            color: #e5e5ea;
+        }
+        .q-item:hover {
+            background: #3a3a3c;
+            transform: scale(0.98);
+        }
+        .q-item.active {
+            background: #0a84ff;
+            color: white;
+            box-shadow: 0 0 0 1px #0a84ff;
+        }
+
+        /* główna karta */
+        .card {
+            flex: 1;
+            background: #1c1c1e;
+            border-radius: 28px;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            padding: 28px 24px 36px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 28px;
+            border-bottom: 1px solid #2c2c2e;
+            padding-bottom: 18px;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+            color: #ffffff;
+        }
+        .header .badge {
+            font-size: 14px;
+            color: #8e8e93;
+            margin-top: 6px;
+            font-weight: 400;
+        }
+
+        .progress-area {
+            margin: 8px 0 20px 0;
+        }
+        .progress-text {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: #aeaeb2;
+            margin-bottom: 6px;
+            font-weight: 500;
+        }
+        .progress-bar-bg {
+            background-color: #2c2c2e;
+            border-radius: 12px;
+            height: 6px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            background: #0a84ff;
+            width: 0%;
+            height: 100%;
+            border-radius: 12px;
+            transition: width 0.25s ease;
+        }
+
+        .question-panel {
+            background: #2c2c2e;
+            border-radius: 28px;
+            padding: 20px;
+            margin: 18px 0 12px 0;
+        }
+        .q-num {
+            font-size: 14px;
+            font-weight: 500;
+            color: #0a84ff;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+        }
+        .q-text {
+            font-size: 22px;
+            font-weight: 590;
+            line-height: 1.35;
+            color: #ffffff;
+            margin-bottom: 20px;
+        }
+
+        .answer-area {
+            margin: 6px 0 12px;
+        }
+        .answer-label {
+            font-weight: 500;
+            font-size: 15px;
+            margin-bottom: 8px;
+            color: #aeaeb2;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        textarea {
+            width: 100%;
+            border-radius: 20px;
+            border: 1px solid #3a3a3c;
+            padding: 14px 16px;
+            font-family: -apple-system, monospace;
+            font-size: 15px;
+            background: #1c1c1e;
+            color: #ffffff;
+            resize: vertical;
+            transition: 0.1s;
+            line-height: 1.4;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0a84ff;
+            box-shadow: 0 0 0 3px rgba(10,132,255,0.3);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 16px;
+            margin: 20px 0 12px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 44px;
+            font-size: 15px;
+            font-weight: 590;
+            cursor: pointer;
+            transition: 0.15s;
+            background: #3a3a3c;
+            color: #ffffff;
+        }
+        .btn-primary {
+            background: #0a84ff;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #0063ce;
+            transform: scale(0.98);
+        }
+        .btn-secondary {
+            background: #3a3a3c;
+        }
+        .btn-secondary:hover {
+            background: #4a4a4e;
+        }
+        .result-badge {
+            border-radius: 44px;
+            padding: 8px 18px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 12px 0 0;
+            display: inline-block;
+            width: auto;
+        }
+        .result-correct {
+            color: #34c759;
+            background: #1e3a2a;
+            border-left: 3px solid #34c759;
+        }
+        .result-wrong {
+            color: #ff453a;
+            background: #3a1e1c;
+            border-left: 3px solid #ff453a;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 14px;
+            justify-content: space-between;
+            margin: 28px 0 12px;
+        }
+        .nav-btn {
+            background: #3a3a3c;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 44px;
+            font-weight: 500;
+            font-size: 15px;
+            cursor: pointer;
+            color: #ffffff;
+            transition: 0.15s;
+            flex: 1;
+            text-align: center;
+        }
+        .nav-btn:hover {
+            background: #4a4a4e;
+        }
+
+        footer {
+            font-size: 12px;
+            text-align: center;
+            color: #636366;
+            margin-top: 28px;
+            border-top: 0.5px solid #2c2c2e;
+            padding-top: 18px;
+        }
+
+        /* responsywność */
+        @media (max-width: 750px) {
+            .app-container {
+                flex-direction: column;
+            }
+            .sidebar {
+                flex: auto;
+                width: 100%;
+                position: static;
+                max-height: 140px;
+                overflow-y: auto;
+                margin-bottom: 8px;
+            }
+            .question-list {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .q-item {
+                min-width: 48px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- panel boczny z listą pytań -->
+    <div class="sidebar">
+        <h3>Pytania</h3>
+        <div class="question-list" id="questionList">
+            <!-- numery 1..41 zostaną wygenerowane przez JS -->
+        </div>
+    </div>
+
+    <!-- główna karta -->
+    <div class="card">
+        <div class="header">
+            <h1>SOPS · systemy operacyjne</h1>
+            <div class="badge">sprawdzanie odpowiedzi · tryb ciemny · szybka nawigacja</div>
+        </div>
+
+        <div class="progress-area">
+            <div class="progress-text">
+                <span id="currentIdxSpan">Pytanie 1</span>
+                <span id="totalCountSpan">z 41</span>
+            </div>
+            <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
+        </div>
+
+        <div class="question-panel">
+            <div class="q-num" id="qNum">PYTANIE</div>
+            <div class="q-text" id="questionText"></div>
+
+            <div class="answer-area">
+                <div class="answer-label">Twoja odpowiedź:</div>
+                <textarea id="userAnswer" rows="3" placeholder="Wpisz swoją odpowiedź..."></textarea>
+            </div>
+
+            <div class="button-group">
+                <button class="btn btn-primary" id="checkBtn">Sprawdź odpowiedź</button>
+                <button class="btn btn-secondary" id="revealBtn">Pokaż wzorzec</button>
+            </div>
+            <div id="resultArea" class="result-badge" style="display: none;"></div>
+            <div id="modelAnswerDiv" style="margin-top: 12px; font-size: 14px; background: #2c2c2e; border-radius: 20px; padding: 12px 16px; display: none; color: #e5e5ea;"></div>
+        </div>
+
+        <div class="nav-buttons">
+            <button class="nav-btn" id="prevBtn">← Poprzednie</button>
+            <button class="nav-btn" id="nextBtn">Następne →</button>
+        </div>
+        <footer>Odpowiedzi zapisywane automatycznie. Kliknij numer pytania, aby przejść.</footer>
+    </div>
+</div>
+
+<script>
+    // ---------- BAZA PYTAŃ I WZORCÓW (41) ----------
+    const questionsData = [
+        { q: "1. Czy proces może przydzielić sobie więcej pamięci niż w RAM?", a: "Tak, dzięki stronicowaniu i przestrzeni wymiany (swap). Proces operuje na adresach wirtualnych mapowanych przez MMU. Brak RAM+swap może jednak spowodować odmowę." },
+        { q: "2. Różnica między systemem czasu rzeczywistego hard real-time a soft real-time?", a: "Hard real-time: przekroczenie terminu jest błędem systemu. Soft real-time: opóźnienie niepożądane, ale nie krytyczne (większość systemów ogólnego przeznaczenia)." },
+        { q: "3. Opisz pracę wsadową z punktu widzenia użytkownika.", a: "Użytkownik przygotowuje zadanie (program + dane) i przekazuje je operatorowi/systemowi. Brak interakcji – wyniki otrzymuje po całkowitym wykonaniu wsadu. Błędy są znane dopiero po czasie." },
+        { q: "4. Różnica między jednoprogramowym a wieloprogramowym systemem wsadowym?", a: "W jednoprogramowym – jeden program w pamięci, procesor czeka na I/O. W wieloprogramowym – kilka zadań w pamięci, procesor może wykonywać inne zadanie podczas oczekiwania na I/O." },
+        { q: "5. Dlaczego shell nie jest częścią jądra?", a: "Shell to zwykły program użytkownika w przestrzeni użytkownika, korzysta z wywołań systemowych. Jądro pracuje w trybie uprzywilejowanym i zarządza zasobami." },
+        { q: "6. Czym jest proces?", a: "Proces to uruchomiony program w pamięci (aktywna postać) z własnym licznikiem rozkazów, rejestrami, stosem i zasobami." },
+        { q: "7. Czy nieskończona pętla w programie zatrzyma system?", a: "Nie, nowoczesne systemy używają przerwań zegarowych, by odebrać procesor i przydzielić go innym procesom." },
+        { q: "8. Przykłady instrukcji uprzywilejowanych.", a: "Instrukcje I/O, blokowanie/odblokowanie przerwań, zmiana wektora przerwań, zmiana rejestrów ochrony pamięci (bazowy/limit)." },
+        { q: "9. Przykład problemu spójności pamięci podręcznej.", a: "Dwa procesory z własnym cache, każdy ma kopię x=5. Procesor A zmienia x na 10, ale B nadal ma starą wartość 5 – odczyt może dać nieaktualny wynik." },
+        { q: "10. Różnica między synchroniczną a asynchroniczną operacją I/O?", a: "Synchroniczna: proces czeka (blokuje się) na zakończenie operacji. Asynchroniczna: operacja tylko rozpoczynana, proces kontynuuje działanie, wynik odbiera później." },
+        { q: "11. Najszybsza i najwolniejsza metoda komunikacji z urządzeniem?", a: "Najwolniejsze: programowane I/O (PIO) – procesor aktywnie czeka. Najszybsze dla dużych bloków: DMA (bez angażowania CPU przy każdym bajcie)." },
+        { q: "12. Przykład procesu w trybie użytkownika i w trybie jądra.", a: "Tryb użytkownika: zwykłe obliczenia arytmetyczne. Tryb jądra: wywołanie systemowe (np. open(), read(), write())." },
+        { q: "13. Co to jest przełączanie kontekstów?", a: "Zmiana aktualnie wykonywanego procesu – zapis stanu bieżącego do PCB (bloku kontrolnego) i odtworzenie stanu innego procesu z jego PCB." },
+        { q: "14. Przykład niepowodzenia (fault).", a: "Dzielenie przez zero, przepełnienie stosu, brak strony w pamięci (page fault), naruszenie ochrony pamięci." },
+        { q: "15. Przykład przejścia procesu z gotowego do zakończonego.", a: "Proces gotowy (w kolejce) zostaje zabity przez inny proces (np. kill -9) – nie musi wchodzić w stan aktywny." },
+        { q: "16. Omów przejścia aktywnego procesu.", a: "Aktywny → Gotowy (upływ kwantu czasu, wywłaszczenie), → Oczekujący (czeka na I/O/zdarzenie), → Zakończony (wywołanie exit() lub błąd krytyczny)." },
+        { q: "17. Funkcje planisty: długo-, krótko- i średnioterminowego.", a: "Długoterminowy: dopuszcza nowe procesy (nowy→gotowy). Krótkoterminowy: wybiera proces z gotowych do wykonania (najważniejszy). Średnioterminowy: swapping (zawieszanie/wznawianie)." },
+        { q: "18. Który planista zawsze musi być w systemie?", a: "Planista krótkoterminowy (planista procesora) – występuje w każdym systemie wielozadaniowym." },
+        { q: "19. Co by było, gdyby proces potomny po fork() wykonał się do końca?", a: "Potomek zakończy się wcześniej. Gdy rodzic wykona wait(), odbierze status zakończonego potomka. Rodzic kontynuuje normalnie." },
+        { q: "20. Przykład procesu w stanach: nowy, gotowy, aktywny, oczekujący, zakończony.", a: "Nowy: tworzony. Gotowy: czeka na procesor. Aktywny: wykonuje się. Oczekujący: czeka na dane z dysku. Zakończony: zakończył działanie (exit)." },
+        { q: "21. Zalety wielowątkowości.", a: "Szybsze tworzenie i zakończenie wątków niż procesów, łatwa komunikacja przez wspólną przestrzeń adresową, lepsze wykorzystanie wielu rdzeni." },
+        { q: "22. Czy można przejść od stanu oczekującego do aktywnego?", a: "Nie bezpośrednio. Najpierw oczekujący→gotowy (po zdarzeniu), potem gotowy→aktywny (przez planistę)." },
+        { q: "23. Przykład przejścia z aktywnego do oczekującego.", a: "Proces wykonuje read() – jeśli dane nie gotowe, zostaje zablokowany (oczekujący) do czasu zakończenia operacji I/O." },
+        { q: "24. Kiedy mówimy o sytuacji wyścigu?", a: "Gdy wynik zależy od nieprzewidywalnej kolejności wykonywania współbieżnych wątków, które współdzielą zasób, a co najmniej jeden go modyfikuje bez synchronizacji." },
+        { q: "25. Warunki poprawnego rozwiązania sekcji krytycznej.", a: "Wzajemne wykluczanie (tylko jeden proces w sekcji), postęp (proces poza sekcją nie blokuje innych), ograniczone czekanie (brak nieskończonego oczekiwania)." },
+        { q: "26. Działanie operacji s.wait() na semaforze zliczającym.", a: "Jeśli s>0, zmniejsza s o 1 i kontynuuje. Jeśli s≤0, wstrzymuje proces (oczekujący) do czasu wykonania s.signal()." },
+        { q: "27. Przykład zakleszczenia (deadlock).", a: "P0: wait(A); wait(B). P1: wait(B); wait(A). Jeśli P0 zajmie A, P1 zajmie B – oba czekają na siebie w nieskończoność." },
+        { q: "28. Definicja zakleszczenia.", a: "Zbiór procesów czeka na zdarzenia, które mogą być spowodowane tylko przez inne procesy z tego samego zbioru – żaden nie może kontynuować." },
+        { q: "29. Przykład zagłodzenia.", a: "Planista zawsze przydziela procesor procesom o wysokim priorytecie – proces o niskim priorytecie może czekać w nieskończoność mimo dostępności procesora." },
+        { q: "30. Problem czytelników i pisarzy.", a: "Współdzielony zasób (czytelnia). Wielu czytelników może czytać jednocześnie, ale pisarz wymaga wyłącznego dostępu (bez czytelników). Synchronizacja unika blokowania czytelników bez potrzeby." },
+        { q: "31. Algorytmy zastępowania stron: LRU, NFU, zegarowy.", a: "LRU: usuwa najdawniej używaną stronę. NFU: usuwa używaną najrzadziej (licznik). Zegarowy: przybliżenie LRU – cykliczne sprawdzanie bitu R, zerowanie i dawanie drugiej szansy." },
+        { q: "32. Anomalia Belady’ego.", a: "Zwiększenie liczby ramek pamięci powoduje wzrost liczby błędów stron (obserwowane dla algorytmu FIFO)." },
+        { q: "33. Co to jest szamotanie (thrashing)?", a: "System spędza większość czasu na przenoszeniu stron między RAM a dyskiem (ciągłe page faulty), zamiast wykonywać instrukcje procesów – zbyt mało ramek na proces." },
+        { q: "34. Jak działa postarzanie (aging) w algorytmie NFU?", a: "Co pewien czas licznik strony jest przesuwany w prawo (dzielony przez 2), a na najstarszy bit wstawiana jest wartość bitu R. Nowsze odwołania mają większe znaczenie – lepsze przybliżenie LRU." },
+        { q: "35. Różnica między FIFO a algorytmem drugiej szansy.", a: "FIFO usuwa najstarszą stronę niezależnie od użycia. Druga szansa: jeśli najstarsza strona ma R=1, zeruje R i trafia na koniec kolejki; usuwa gdy R=0." },
+        { q: "36. Znaczenie bitów D i R w tablicy stron.", a: "R (reference) – strona była ostatnio używana. D (dirty) – strona była modyfikowana. Jeśli D=1, przed usunięciem trzeba zapisać na dysk." },
+        { q: "37. Algorytmy SCAN, C-SCAN, C-LOOK.", a: "SCAN (winda): głowica idzie w jednym kierunku, obsługuje żądania, zawraca. C-SCAN: tylko w jednym kierunku, po końcu wraca bez obsługi. C-LOOK: do ostatniego żądania w kierunku, potem skok do najmniejszego." },
+        { q: "38. Różnica między RAID 4 a RAID 5.", a: "RAID 4: paskowanie danych + dedykowany dysk parzystości (wąskie gardło przy zapisach). RAID 5: parzystość rozproszona po wszystkich dyskach – lepsze rozłożenie obciążenia." },
+        { q: "39. Dlaczego RAID 0 nie jest właściwie macierzą RAID?", a: "RAID = Redundant Array of Independent Disks (z nadmiarowością). RAID 0 nie ma nadmiarowości – awaria jednego dysku powoduje utratę wszystkich danych." },
+        { q: "40. Dlaczego algorytmy szeregowania HDD (np. SSTF) nie mają sensu dla SSD?", a: "W SSD brak mechanicznej głowicy i talerzy – czas dostępu jest prawie jednostajny, więc optymalizacje pozycjonowania są zbędne." },
+        { q: "41. Składowe czasu operacji HDD – które dominują?", a: "Czas pozycjonowania głowicy (seek) i opóźnienie obrotowe (rotational latency) dominują; czas transmisji danych jest zwykle znacznie mniejszy." }
+    ];
+
+    // ------------------- GLOBALNE ------------------
+    let currentIndex = 0;          // 0..40
+    const STORAGE_KEY = "sops_user_answers_dark_v3";
+    let userAnswers = new Array(questionsData.length).fill("");
+
+    // Elementy DOM
+    const questionTextEl = document.getElementById("questionText");
+    const qNumEl = document.getElementById("qNum");
+    const userAnswerTextarea = document.getElementById("userAnswer");
+    const checkBtn = document.getElementById("checkBtn");
+    const revealBtn = document.getElementById("revealBtn");
+    const resultArea = document.getElementById("resultArea");
+    const modelAnswerDiv = document.getElementById("modelAnswerDiv");
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const progressFill = document.getElementById("progressFill");
+    const currentIdxSpan = document.getElementById("currentIdxSpan");
+    const totalCountSpan = document.getElementById("totalCountSpan");
+    const questionListDiv = document.getElementById("questionList");
+
+    // ---------- Funkcje pomocnicze ----------
+    function loadAnswers() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                if (Array.isArray(parsed) && parsed.length === questionsData.length) {
+                    userAnswers = parsed;
+                }
+            } catch(e) { console.warn(e); }
+        }
+        if (userAnswerTextarea) {
+            userAnswerTextarea.value = userAnswers[currentIndex] || "";
+        }
+    }
+
+    function saveAllAnswers() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userAnswers));
+    }
+
+    function syncCurrentAnswer() {
+        if (userAnswerTextarea) {
+            userAnswers[currentIndex] = userAnswerTextarea.value;
+            saveAllAnswers();
+        }
+    }
+
+    function updateProgressAndCounter() {
+        const percent = ((currentIndex + 1) / questionsData.length) * 100;
+        if (progressFill) progressFill.style.width = `${percent}%`;
+        if (currentIdxSpan) currentIdxSpan.innerText = `Pytanie ${currentIndex+1}`;
+        if (totalCountSpan) totalCountSpan.innerText = `z ${questionsData.length}`;
+        if (qNumEl) qNumEl.innerText = `PYTANIE ${currentIndex+1} / ${questionsData.length}`;
+        // podświetlenie aktywnego pytania w panelu bocznym
+        document.querySelectorAll('.q-item').forEach((item, idx) => {
+            if (idx === currentIndex) item.classList.add('active');
+            else item.classList.remove('active');
+        });
+    }
+
+    // Inteligentne sprawdzanie – działa również dla krótkich odpowiedzi
+    function isAnswerCorrect(userAnswer, modelAnswer) {
+        const norm = (s) => s.toLowerCase()
+            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        const userNorm = norm(userAnswer);
+        const modelNorm = norm(modelAnswer);
+        
+        if (userNorm === modelNorm) return true;
+        if (userNorm.length === 0) return false;
+        
+        // krótkie odpowiedzi (<20 znaków) – sprawdź czy zawierają się w modelu
+        if (userNorm.length < 20) {
+            if (modelNorm.includes(userNorm)) return true;
+            const userWords = userNorm.split(/\s+/);
+            let matchCount = 0;
+            for (let w of userWords) {
+                if (w.length > 2 && modelNorm.includes(w)) matchCount++;
+            }
+            if (matchCount >= userWords.length * 0.5) return true;
+        }
+        
+        // Jaccard na słowach
+        const wordsUser = new Set(userNorm.split(/\s+/));
+        const wordsModel = new Set(modelNorm.split(/\s+/));
+        let intersection = 0;
+        for (let w of wordsUser) {
+            if (wordsModel.has(w)) intersection++;
+        }
+        let union = wordsUser.size + wordsModel.size - intersection;
+        if (union === 0) return false;
+        const jaccard = intersection / union;
+        
+        // kluczowe frazy z modelu (pierwsze 3 zdania)
+        const keyPhrases = modelAnswer.split(/[.;]/).slice(0,3).map(p => norm(p)).filter(p => p.length > 8);
+        let containsKey = false;
+        for (let phrase of keyPhrases) {
+            if (userNorm.includes(phrase)) {
+                containsKey = true;
+                break;
+            }
+        }
+        return (jaccard >= 0.35) || containsKey;
+    }
+
+    function checkAnswer() {
+        const userAnswer = userAnswerTextarea.value.trim();
+        const modelAnswer = questionsData[currentIndex].a;
+        const correct = isAnswerCorrect(userAnswer, modelAnswer);
+        resultArea.style.display = "block";
+        if (correct) {
+            resultArea.textContent = "Poprawnie";
+            resultArea.className = "result-badge result-correct";
+        } else {
+            resultArea.textContent = "Niepoprawnie";
+            resultArea.className = "result-badge result-wrong";
+        }
+    }
+
+    function revealModel() {
+        const modelText = questionsData[currentIndex].a;
+        modelAnswerDiv.style.display = "block";
+        modelAnswerDiv.innerHTML = `<strong>Wzorcowa odpowiedź:</strong><br>${modelText}`;
+    }
+
+    function loadQuestion(index) {
+        syncCurrentAnswer();          // zapisz odpowiedź dla poprzedniego pytania
+        currentIndex = index;
+        questionTextEl.innerText = questionsData[currentIndex].q;
+        userAnswerTextarea.value = userAnswers[currentIndex] || "";
+        // Wyczyść komunikaty (nie zostaje tekst w środku – ukrywamy poprzednie wyniki)
+        resultArea.style.display = "none";
+        modelAnswerDiv.style.display = "none";
+        modelAnswerDiv.innerHTML = "";
+        updateProgressAndCounter();
+    }
+
+    function goToQuestion(index) {
+        if (index >= 0 && index < questionsData.length) {
+            loadQuestion(index);
+        }
+    }
+
+    // Generowanie panelu bocznego
+    function buildSidebar() {
+        questionListDiv.innerHTML = "";
+        for (let i = 0; i < questionsData.length; i++) {
+            const item = document.createElement("div");
+            item.className = "q-item";
+            if (i === currentIndex) item.classList.add("active");
+            item.textContent = i+1;
+            item.addEventListener("click", (function(idx) {
+                return function() { goToQuestion(idx); };
+            })(i));
+            questionListDiv.appendChild(item);
+        }
+    }
+
+    // ---------- Eventy i inicjalizacja ----------
+    function init() {
+        buildSidebar();
+        loadAnswers();
+        updateProgressAndCounter();
+        loadQuestion(currentIndex);
+
+        userAnswerTextarea.addEventListener("input", function() {
+            userAnswers[currentIndex] = userAnswerTextarea.value;
+            saveAllAnswers();
+        });
+
+        checkBtn.addEventListener("click", checkAnswer);
+        revealBtn.addEventListener("click", revealModel);
+
+        prevBtn.addEventListener("click", () => {
+            if (currentIndex > 0) {
+                goToQuestion(currentIndex - 1);
+            }
+        });
+
+        nextBtn.addEventListener("click", () => {
+            if (currentIndex < questionsData.length - 1) {
+                goToQuestion(currentIndex + 1);
+            }
+        });
+    }
+
+    init();
+</script>
+</body>
+</html>
