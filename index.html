@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>SOPS · sprawdzanie odpowiedzi · tryb ciemny · panel boczny</title>
+    <title>SOPS · sprawdzanie odpowiedzi · statystyki</title>
     <style>
         * {
             margin: 0;
@@ -74,6 +74,21 @@
             color: white;
             box-shadow: 0 0 0 1px #0a84ff;
         }
+        /* status odpowiedzi w panelu bocznym */
+        .q-item.correct {
+            background: #1e3a2a;
+            color: #34c759;
+            border-left: 2px solid #34c759;
+        }
+        .q-item.wrong {
+            background: #3a1e1c;
+            color: #ff453a;
+            border-left: 2px solid #ff453a;
+        }
+        .q-item.untouched {
+            background: #2c2c2e;
+            color: #e5e5ea;
+        }
 
         /* główna karta */
         .card {
@@ -102,6 +117,48 @@
             color: #8e8e93;
             margin-top: 6px;
             font-weight: 400;
+        }
+        /* panel statystyk – wyraźny */
+        .stats-panel {
+            background: #2c2c2e;
+            border-radius: 32px;
+            padding: 16px 20px;
+            margin: 20px 0 10px;
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            gap: 20px;
+            border: 0.5px solid #3a3a3c;
+        }
+        .stat-card {
+            text-align: center;
+            flex: 1;
+            min-width: 100px;
+        }
+        .stat-label {
+            font-size: 13px;
+            color: #8e8e93;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+        .stat-value.correct {
+            color: #34c759;
+        }
+        .stat-value.wrong {
+            color: #ff453a;
+        }
+        .stat-value.percent {
+            color: #0a84ff;
+        }
+        .stat-note {
+            font-size: 12px;
+            color: #636366;
+            margin-top: 4px;
         }
 
         .progress-area {
@@ -266,7 +323,6 @@
             padding-top: 18px;
         }
 
-        /* responsywność */
         @media (max-width: 750px) {
             .app-container {
                 flex-direction: column;
@@ -287,6 +343,13 @@
             .q-item {
                 min-width: 48px;
             }
+            .stats-panel {
+                flex-direction: row;
+                gap: 10px;
+            }
+            .stat-value {
+                font-size: 26px;
+            }
         }
     </style>
 </head>
@@ -295,16 +358,38 @@
     <!-- panel boczny z listą pytań -->
     <div class="sidebar">
         <h3>Pytania</h3>
-        <div class="question-list" id="questionList">
-            <!-- numery 1..41 zostaną wygenerowane przez JS -->
-        </div>
+        <div class="question-list" id="questionList"></div>
     </div>
 
     <!-- główna karta -->
     <div class="card">
         <div class="header">
             <h1>SOPS · systemy operacyjne</h1>
-            <div class="badge">sprawdzanie odpowiedzi · tryb ciemny · szybka nawigacja</div>
+            <div class="badge">sprawdzanie odpowiedzi · tryb ciemny · pełne statystyki</div>
+        </div>
+
+        <!-- PANEL STATYSTYK – wyraźnie pokazuje poprawne, błędne, procent -->
+        <div class="stats-panel">
+            <div class="stat-card">
+                <div class="stat-label">POPRAWNE</div>
+                <div class="stat-value correct" id="correctCount">0</div>
+                <div class="stat-note">odpowiedzi</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">BŁĘDY</div>
+                <div class="stat-value wrong" id="wrongCount">0</div>
+                <div class="stat-note">niepoprawne</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">WYNIK</div>
+                <div class="stat-value percent" id="percentResult">0%</div>
+                <div class="stat-note">skuteczność</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">ROZWIĄZANE</div>
+                <div class="stat-value" id="solvedCount" style="color: #aeaeb2;">0</div>
+                <div class="stat-note">z 41 sprawdzonych</div>
+            </div>
         </div>
 
         <div class="progress-area">
@@ -336,7 +421,7 @@
             <button class="nav-btn" id="prevBtn">← Poprzednie</button>
             <button class="nav-btn" id="nextBtn">Następne →</button>
         </div>
-        <footer>Odpowiedzi zapisywane automatycznie. Kliknij numer pytania, aby przejść.</footer>
+        <footer>Odpowiedzi zapisywane automatycznie. Kliknij numer pytania, aby przejść. Wyniki są liczone na podstawie kliknięcia „Sprawdź odpowiedź”.</footer>
     </div>
 </div>
 
@@ -386,9 +471,11 @@
         { q: "41. Składowe czasu operacji HDD – które dominują?", a: "Czas pozycjonowania głowicy (seek) i opóźnienie obrotowe (rotational latency) dominują; czas transmisji danych jest zwykle znacznie mniejszy." }
     ];
 
-    // ------------------- GLOBALNE ------------------
-    let currentIndex = 0;          // 0..40
-    const STORAGE_KEY = "sops_user_answers_dark_v3";
+    // ------------------- STANY ------------------
+    let currentIndex = 0;
+    const STORAGE_RESULTS = "sops_results_final";
+    const STORAGE_ANSWERS = "sops_user_answers_final";
+    let results = new Array(questionsData.length).fill(null);   // null = niesprawdzone, true = poprawne, false = błędne
     let userAnswers = new Array(questionsData.length).fill("");
 
     // Elementy DOM
@@ -405,32 +492,63 @@
     const currentIdxSpan = document.getElementById("currentIdxSpan");
     const totalCountSpan = document.getElementById("totalCountSpan");
     const questionListDiv = document.getElementById("questionList");
+    const correctCountSpan = document.getElementById("correctCount");
+    const wrongCountSpan = document.getElementById("wrongCount");
+    const percentResultSpan = document.getElementById("percentResult");
+    const solvedCountSpan = document.getElementById("solvedCount");
 
     // ---------- Funkcje pomocnicze ----------
-    function loadAnswers() {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (stored) {
+    function loadData() {
+        const storedResults = localStorage.getItem(STORAGE_RESULTS);
+        if (storedResults) {
             try {
-                const parsed = JSON.parse(stored);
-                if (Array.isArray(parsed) && parsed.length === questionsData.length) {
-                    userAnswers = parsed;
-                }
-            } catch(e) { console.warn(e); }
+                const parsed = JSON.parse(storedResults);
+                if (Array.isArray(parsed) && parsed.length === questionsData.length) results = parsed;
+            } catch(e) {}
         }
-        if (userAnswerTextarea) {
-            userAnswerTextarea.value = userAnswers[currentIndex] || "";
+        const storedAnswers = localStorage.getItem(STORAGE_ANSWERS);
+        if (storedAnswers) {
+            try {
+                const parsed = JSON.parse(storedAnswers);
+                if (Array.isArray(parsed) && parsed.length === questionsData.length) userAnswers = parsed;
+            } catch(e) {}
         }
+        if (userAnswerTextarea) userAnswerTextarea.value = userAnswers[currentIndex] || "";
     }
 
-    function saveAllAnswers() {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(userAnswers));
+    function saveAll() {
+        localStorage.setItem(STORAGE_RESULTS, JSON.stringify(results));
+        localStorage.setItem(STORAGE_ANSWERS, JSON.stringify(userAnswers));
     }
 
     function syncCurrentAnswer() {
         if (userAnswerTextarea) {
             userAnswers[currentIndex] = userAnswerTextarea.value;
-            saveAllAnswers();
+            saveAll();
         }
+    }
+
+    // Aktualizacja statystyk (poprawne, błędne, procent, rozwiązane)
+    function updateStats() {
+        let correct = 0, wrong = 0;
+        for (let i = 0; i < results.length; i++) {
+            if (results[i] === true) correct++;
+            else if (results[i] === false) wrong++;
+        }
+        const solved = correct + wrong;
+        const percent = solved === 0 ? 0 : Math.round((correct / solved) * 100);
+        if (correctCountSpan) correctCountSpan.innerText = correct;
+        if (wrongCountSpan) wrongCountSpan.innerText = wrong;
+        if (percentResultSpan) percentResultSpan.innerText = `${percent}%`;
+        if (solvedCountSpan) solvedCountSpan.innerText = `${solved}`;
+        
+        // aktualizacja kolorów w bocznym panelu
+        document.querySelectorAll('.q-item').forEach((item, idx) => {
+            item.classList.remove('correct', 'wrong', 'untouched');
+            if (results[idx] === true) item.classList.add('correct');
+            else if (results[idx] === false) item.classList.add('wrong');
+            else item.classList.add('untouched');
+        });
     }
 
     function updateProgressAndCounter() {
@@ -439,14 +557,13 @@
         if (currentIdxSpan) currentIdxSpan.innerText = `Pytanie ${currentIndex+1}`;
         if (totalCountSpan) totalCountSpan.innerText = `z ${questionsData.length}`;
         if (qNumEl) qNumEl.innerText = `PYTANIE ${currentIndex+1} / ${questionsData.length}`;
-        // podświetlenie aktywnego pytania w panelu bocznym
         document.querySelectorAll('.q-item').forEach((item, idx) => {
             if (idx === currentIndex) item.classList.add('active');
             else item.classList.remove('active');
         });
     }
 
-    // Inteligentne sprawdzanie – działa również dla krótkich odpowiedzi
+    // Inteligentne porównanie odpowiedzi
     function isAnswerCorrect(userAnswer, modelAnswer) {
         const norm = (s) => s.toLowerCase()
             .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
@@ -454,11 +571,8 @@
             .trim();
         const userNorm = norm(userAnswer);
         const modelNorm = norm(modelAnswer);
-        
         if (userNorm === modelNorm) return true;
         if (userNorm.length === 0) return false;
-        
-        // krótkie odpowiedzi (<20 znaków) – sprawdź czy zawierają się w modelu
         if (userNorm.length < 20) {
             if (modelNorm.includes(userNorm)) return true;
             const userWords = userNorm.split(/\s+/);
@@ -468,8 +582,6 @@
             }
             if (matchCount >= userWords.length * 0.5) return true;
         }
-        
-        // Jaccard na słowach
         const wordsUser = new Set(userNorm.split(/\s+/));
         const wordsModel = new Set(modelNorm.split(/\s+/));
         let intersection = 0;
@@ -479,100 +591,85 @@
         let union = wordsUser.size + wordsModel.size - intersection;
         if (union === 0) return false;
         const jaccard = intersection / union;
-        
-        // kluczowe frazy z modelu (pierwsze 3 zdania)
         const keyPhrases = modelAnswer.split(/[.;]/).slice(0,3).map(p => norm(p)).filter(p => p.length > 8);
         let containsKey = false;
         for (let phrase of keyPhrases) {
-            if (userNorm.includes(phrase)) {
-                containsKey = true;
-                break;
-            }
+            if (userNorm.includes(phrase)) { containsKey = true; break; }
         }
         return (jaccard >= 0.35) || containsKey;
     }
 
     function checkAnswer() {
-        const userAnswer = userAnswerTextarea.value.trim();
-        const modelAnswer = questionsData[currentIndex].a;
-        const correct = isAnswerCorrect(userAnswer, modelAnswer);
+        const userAns = userAnswerTextarea.value.trim();
+        const modelAns = questionsData[currentIndex].a;
+        const correct = isAnswerCorrect(userAns, modelAns);
+        results[currentIndex] = correct;
+        saveAll();
         resultArea.style.display = "block";
         if (correct) {
-            resultArea.textContent = "Poprawnie";
+            resultArea.textContent = "✓ Poprawnie";
             resultArea.className = "result-badge result-correct";
         } else {
-            resultArea.textContent = "Niepoprawnie";
+            resultArea.textContent = "✗ Niepoprawnie";
             resultArea.className = "result-badge result-wrong";
         }
+        updateStats();
     }
 
     function revealModel() {
         const modelText = questionsData[currentIndex].a;
         modelAnswerDiv.style.display = "block";
-        modelAnswerDiv.innerHTML = `<strong>Wzorcowa odpowiedź:</strong><br>${modelText}`;
+        modelAnswerDiv.innerHTML = `<strong>📖 Wzorcowa odpowiedź:</strong><br>${modelText}`;
     }
 
     function loadQuestion(index) {
-        syncCurrentAnswer();          // zapisz odpowiedź dla poprzedniego pytania
+        syncCurrentAnswer();
         currentIndex = index;
         questionTextEl.innerText = questionsData[currentIndex].q;
         userAnswerTextarea.value = userAnswers[currentIndex] || "";
-        // Wyczyść komunikaty (nie zostaje tekst w środku – ukrywamy poprzednie wyniki)
         resultArea.style.display = "none";
         modelAnswerDiv.style.display = "none";
         modelAnswerDiv.innerHTML = "";
         updateProgressAndCounter();
+        updateStats();  // odświeżenie paska bocznego i statystyk po ewentualnej zmianie
     }
 
     function goToQuestion(index) {
-        if (index >= 0 && index < questionsData.length) {
-            loadQuestion(index);
-        }
+        if (index >= 0 && index < questionsData.length) loadQuestion(index);
     }
 
-    // Generowanie panelu bocznego
     function buildSidebar() {
         questionListDiv.innerHTML = "";
         for (let i = 0; i < questionsData.length; i++) {
             const item = document.createElement("div");
-            item.className = "q-item";
+            let statusClass = "untouched";
+            if (results[i] === true) statusClass = "correct";
+            else if (results[i] === false) statusClass = "wrong";
+            item.className = `q-item ${statusClass}`;
             if (i === currentIndex) item.classList.add("active");
             item.textContent = i+1;
-            item.addEventListener("click", (function(idx) {
-                return function() { goToQuestion(idx); };
-            })(i));
+            item.addEventListener("click", (function(idx) { return function() { goToQuestion(idx); }; })(i));
             questionListDiv.appendChild(item);
         }
     }
 
-    // ---------- Eventy i inicjalizacja ----------
+    // ---------- Inicjalizacja ----------
     function init() {
+        loadData();
         buildSidebar();
-        loadAnswers();
+        updateStats();
         updateProgressAndCounter();
         loadQuestion(currentIndex);
-
-        userAnswerTextarea.addEventListener("input", function() {
+        
+        userAnswerTextarea.addEventListener("input", () => {
             userAnswers[currentIndex] = userAnswerTextarea.value;
-            saveAllAnswers();
+            saveAll();
         });
-
         checkBtn.addEventListener("click", checkAnswer);
         revealBtn.addEventListener("click", revealModel);
-
-        prevBtn.addEventListener("click", () => {
-            if (currentIndex > 0) {
-                goToQuestion(currentIndex - 1);
-            }
-        });
-
-        nextBtn.addEventListener("click", () => {
-            if (currentIndex < questionsData.length - 1) {
-                goToQuestion(currentIndex + 1);
-            }
-        });
+        prevBtn.addEventListener("click", () => { if (currentIndex > 0) goToQuestion(currentIndex - 1); });
+        nextBtn.addEventListener("click", () => { if (currentIndex < questionsData.length - 1) goToQuestion(currentIndex + 1); });
     }
-
     init();
 </script>
 </body>
