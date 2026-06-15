@@ -1,676 +1,1058 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="pl" data-theme="light">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>SOPS · sprawdzanie odpowiedzi · statystyki</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aplikacja egzaminacyjna — bazy danych</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --bg-soft: #eef3ff;
+      --card: rgba(255, 255, 255, 0.86);
+      --card-strong: #ffffff;
+      --text: #152033;
+      --muted: #667085;
+      --border: rgba(21, 32, 51, 0.12);
+      --primary: #2454ff;
+      --primary-2: #6c8cff;
+      --good: #12805c;
+      --good-bg: #daf8ea;
+      --bad: #b42318;
+      --bad-bg: #ffe4e1;
+      --warn: #b54708;
+      --warn-bg: #fff2d6;
+      --shadow: 0 24px 70px rgba(20, 35, 70, 0.14);
+      --radius: 24px;
+      --transition: 180ms ease;
+    }
 
-        body {
-            background-color: #000000;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: #f5f5f7;
-            padding: 20px;
-            line-height: 1.4;
-        }
+    html[data-theme="dark"] {
+      --bg: #0a1020;
+      --bg-soft: #101a33;
+      --card: rgba(18, 27, 49, 0.86);
+      --card-strong: #141f38;
+      --text: #edf2ff;
+      --muted: #a8b3cf;
+      --border: rgba(237, 242, 255, 0.14);
+      --primary: #86a2ff;
+      --primary-2: #c1cdff;
+      --good: #45d39a;
+      --good-bg: rgba(35, 134, 91, 0.22);
+      --bad: #ff8a80;
+      --bad-bg: rgba(180, 35, 24, 0.24);
+      --warn: #ffd166;
+      --warn-bg: rgba(181, 71, 8, 0.22);
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+    }
 
-        /* layout z panelem bocznym */
-        .app-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            gap: 20px;
-            align-items: flex-start;
-        }
+    * { box-sizing: border-box; }
 
-        /* panel boczny (lista pytań) */
-        .sidebar {
-            flex: 0 0 160px;
-            background: #1c1c1e;
-            border-radius: 28px;
-            padding: 16px 12px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-            border: 0.5px solid #2c2c2e;
-            position: sticky;
-            top: 20px;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto;
-        }
-        .sidebar h3 {
-            font-size: 14px;
-            font-weight: 600;
-            color: #8e8e93;
-            text-align: center;
-            margin-bottom: 16px;
-            letter-spacing: 0.3px;
-        }
-        .question-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .q-item {
-            background: #2c2c2e;
-            text-align: center;
-            padding: 8px 4px;
-            border-radius: 40px;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: 0.1s ease;
-            color: #e5e5ea;
-        }
-        .q-item:hover {
-            background: #3a3a3c;
-            transform: scale(0.98);
-        }
-        .q-item.active {
-            background: #0a84ff;
-            color: white;
-            box-shadow: 0 0 0 1px #0a84ff;
-        }
-        /* status odpowiedzi w panelu bocznym */
-        .q-item.correct {
-            background: #1e3a2a;
-            color: #34c759;
-            border-left: 2px solid #34c759;
-        }
-        .q-item.wrong {
-            background: #3a1e1c;
-            color: #ff453a;
-            border-left: 2px solid #ff453a;
-        }
-        .q-item.untouched {
-            background: #2c2c2e;
-            color: #e5e5ea;
-        }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(36, 84, 255, 0.18), transparent 34rem),
+        radial-gradient(circle at bottom right, rgba(18, 128, 92, 0.12), transparent 30rem),
+        var(--bg);
+      transition: background var(--transition), color var(--transition);
+    }
 
-        /* główna karta */
-        .card {
-            flex: 1;
-            background: #1c1c1e;
-            border-radius: 28px;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.05);
-            overflow: hidden;
-            padding: 28px 24px 36px;
-        }
+    button, input, select { font: inherit; }
 
-        .header {
-            text-align: center;
-            margin-bottom: 28px;
-            border-bottom: 1px solid #2c2c2e;
-            padding-bottom: 18px;
-        }
-        .header h1 {
-            font-size: 28px;
-            font-weight: 600;
-            letter-spacing: -0.3px;
-            color: #ffffff;
-        }
-        .header .badge {
-            font-size: 14px;
-            color: #8e8e93;
-            margin-top: 6px;
-            font-weight: 400;
-        }
-        /* panel statystyk – wyraźny */
-        .stats-panel {
-            background: #2c2c2e;
-            border-radius: 32px;
-            padding: 16px 20px;
-            margin: 20px 0 10px;
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-            gap: 20px;
-            border: 0.5px solid #3a3a3c;
-        }
-        .stat-card {
-            text-align: center;
-            flex: 1;
-            min-width: 100px;
-        }
-        .stat-label {
-            font-size: 13px;
-            color: #8e8e93;
-            letter-spacing: 0.5px;
-            margin-bottom: 6px;
-        }
-        .stat-value {
-            font-size: 32px;
-            font-weight: 700;
-            line-height: 1.2;
-        }
-        .stat-value.correct {
-            color: #34c759;
-        }
-        .stat-value.wrong {
-            color: #ff453a;
-        }
-        .stat-value.percent {
-            color: #0a84ff;
-        }
-        .stat-note {
-            font-size: 12px;
-            color: #636366;
-            margin-top: 4px;
-        }
+    .app {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 52px;
+    }
 
-        .progress-area {
-            margin: 8px 0 20px 0;
-        }
-        .progress-text {
-            display: flex;
-            justify-content: space-between;
-            font-size: 14px;
-            color: #aeaeb2;
-            margin-bottom: 6px;
-            font-weight: 500;
-        }
-        .progress-bar-bg {
-            background-color: #2c2c2e;
-            border-radius: 12px;
-            height: 6px;
-            overflow: hidden;
-        }
-        .progress-fill {
-            background: #0a84ff;
-            width: 0%;
-            height: 100%;
-            border-radius: 12px;
-            transition: width 0.25s ease;
-        }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
 
-        .question-panel {
-            background: #2c2c2e;
-            border-radius: 28px;
-            padding: 20px;
-            margin: 18px 0 12px 0;
-        }
-        .q-num {
-            font-size: 14px;
-            font-weight: 500;
-            color: #0a84ff;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 12px;
-        }
-        .q-text {
-            font-size: 22px;
-            font-weight: 590;
-            line-height: 1.35;
-            color: #ffffff;
-            margin-bottom: 20px;
-        }
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
 
-        .answer-area {
-            margin: 6px 0 12px;
-        }
-        .answer-label {
-            font-weight: 500;
-            font-size: 15px;
-            margin-bottom: 8px;
-            color: #aeaeb2;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        textarea {
-            width: 100%;
-            border-radius: 20px;
-            border: 1px solid #3a3a3c;
-            padding: 14px 16px;
-            font-family: -apple-system, monospace;
-            font-size: 15px;
-            background: #1c1c1e;
-            color: #ffffff;
-            resize: vertical;
-            transition: 0.1s;
-            line-height: 1.4;
-        }
-        textarea:focus {
-            outline: none;
-            border-color: #0a84ff;
-            box-shadow: 0 0 0 3px rgba(10,132,255,0.3);
-        }
+    .brand h1 {
+      margin: 0;
+      font-size: clamp(1.35rem, 4vw, 2.35rem);
+      letter-spacing: -0.04em;
+    }
 
-        .button-group {
-            display: flex;
-            gap: 16px;
-            margin: 20px 0 12px;
-            flex-wrap: wrap;
-        }
-        .btn {
-            border: none;
-            padding: 10px 20px;
-            border-radius: 44px;
-            font-size: 15px;
-            font-weight: 590;
-            cursor: pointer;
-            transition: 0.15s;
-            background: #3a3a3c;
-            color: #ffffff;
-        }
-        .btn-primary {
-            background: #0a84ff;
-            color: white;
-        }
-        .btn-primary:hover {
-            background: #0063ce;
-            transform: scale(0.98);
-        }
-        .btn-secondary {
-            background: #3a3a3c;
-        }
-        .btn-secondary:hover {
-            background: #4a4a4e;
-        }
-        .result-badge {
-            border-radius: 44px;
-            padding: 8px 18px;
-            text-align: center;
-            font-size: 14px;
-            font-weight: 500;
-            margin: 12px 0 0;
-            display: inline-block;
-            width: auto;
-        }
-        .result-correct {
-            color: #34c759;
-            background: #1e3a2a;
-            border-left: 3px solid #34c759;
-        }
-        .result-wrong {
-            color: #ff453a;
-            background: #3a1e1c;
-            border-left: 3px solid #ff453a;
-        }
+    .brand p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
 
-        .nav-buttons {
-            display: flex;
-            gap: 14px;
-            justify-content: space-between;
-            margin: 28px 0 12px;
-        }
-        .nav-btn {
-            background: #3a3a3c;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 44px;
-            font-weight: 500;
-            font-size: 15px;
-            cursor: pointer;
-            color: #ffffff;
-            transition: 0.15s;
-            flex: 1;
-            text-align: center;
-        }
-        .nav-btn:hover {
-            background: #4a4a4e;
-        }
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
 
-        footer {
-            font-size: 12px;
-            text-align: center;
-            color: #636366;
-            margin-top: 28px;
-            border-top: 0.5px solid #2c2c2e;
-            padding-top: 18px;
-        }
+    .panel {
+      background: var(--card);
+      backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: clamp(18px, 3vw, 30px);
+    }
 
-        @media (max-width: 750px) {
-            .app-container {
-                flex-direction: column;
-            }
-            .sidebar {
-                flex: auto;
-                width: 100%;
-                position: static;
-                max-height: 140px;
-                overflow-y: auto;
-                margin-bottom: 8px;
-            }
-            .question-list {
-                flex-direction: row;
-                flex-wrap: wrap;
-                justify-content: center;
-            }
-            .q-item {
-                min-width: 48px;
-            }
-            .stats-panel {
-                flex-direction: row;
-                gap: 10px;
-            }
-            .stat-value {
-                font-size: 26px;
-            }
-        }
-    </style>
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .stat {
+      background: var(--card-strong);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 14px;
+      min-height: 82px;
+    }
+
+    .stat .label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 8px;
+    }
+
+    .stat .value {
+      font-size: clamp(1.25rem, 2.5vw, 1.8rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .field {
+      display: grid;
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    label { color: var(--muted); font-weight: 700; }
+
+    input[type="number"], select {
+      width: min(360px, 100%);
+      background: var(--card-strong);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 14px;
+      outline: none;
+    }
+
+    input[type="number"]:focus, select:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(36, 84, 255, 0.12);
+    }
+
+    .btn {
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 11px 17px;
+      color: var(--text);
+      background: var(--card-strong);
+      cursor: pointer;
+      transition: transform var(--transition), border var(--transition), background var(--transition), opacity var(--transition);
+      font-weight: 800;
+    }
+
+    .btn:hover { transform: translateY(-1px); border-color: var(--primary); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-2));
+      color: #fff;
+      border-color: transparent;
+    }
+
+    html[data-theme="dark"] .btn.primary { color: #061126; }
+
+    .btn.danger {
+      color: var(--bad);
+      border-color: rgba(180, 35, 24, 0.35);
+    }
+
+    .question-card {
+      margin-top: 14px;
+      animation: cardIn 240ms ease both;
+    }
+
+    @keyframes cardIn {
+      from { opacity: 0; transform: translateY(10px) scale(0.99); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    .progressline {
+      height: 10px;
+      background: var(--bg-soft);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 14px 0 22px;
+      border: 1px solid var(--border);
+    }
+
+    .progressbar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--primary), var(--good));
+      transition: width 260ms ease;
+    }
+
+    .question-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 18px;
+      margin-bottom: 12px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      white-space: nowrap;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: var(--bg-soft);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      font-weight: 800;
+      font-size: 0.88rem;
+    }
+
+    .question-text {
+      margin: 0 0 18px;
+      font-size: clamp(1.02rem, 2vw, 1.22rem);
+      line-height: 1.55;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+
+    .answers {
+      display: grid;
+      gap: 12px;
+      margin: 20px 0;
+    }
+
+    .answer {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      width: 100%;
+      text-align: left;
+      background: var(--card-strong);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 18px;
+      padding: 15px;
+      cursor: pointer;
+      transition: transform var(--transition), border var(--transition), background var(--transition), box-shadow var(--transition);
+      min-height: 62px;
+    }
+
+    .answer:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: var(--primary);
+      box-shadow: 0 10px 28px rgba(36, 84, 255, 0.12);
+    }
+
+    .answer:disabled { cursor: default; }
+
+    .letter {
+      width: 34px;
+      height: 34px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 12px;
+      background: var(--bg-soft);
+      color: var(--primary);
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .answer.correct {
+      border-color: var(--good);
+      background: var(--good-bg);
+    }
+
+    .answer.wrong {
+      border-color: var(--bad);
+      background: var(--bad-bg);
+    }
+
+    .answer.selected { outline: 3px solid rgba(36, 84, 255, 0.16); }
+
+    .feedback {
+      display: none;
+      border-radius: 18px;
+      padding: 14px 16px;
+      margin: 16px 0;
+      line-height: 1.5;
+      border: 1px solid var(--border);
+    }
+
+    .feedback.show { display: block; animation: cardIn 200ms ease both; }
+    .feedback.ok { background: var(--good-bg); color: var(--text); border-color: var(--good); }
+    .feedback.no { background: var(--bad-bg); color: var(--text); border-color: var(--bad); }
+    .feedback.warn { background: var(--warn-bg); color: var(--text); border-color: var(--warn); }
+
+    .source-note {
+      color: var(--muted);
+      font-size: 0.82rem;
+      margin-top: 10px;
+    }
+
+    .hidden { display: none !important; }
+
+    .summary { text-align: center; }
+
+    .summary-score {
+      font-size: clamp(2.6rem, 8vw, 5rem);
+      line-height: 1;
+      font-weight: 950;
+      letter-spacing: -0.08em;
+      margin: 14px 0;
+    }
+
+    .empty {
+      padding: 18px;
+      border-radius: 18px;
+      background: var(--warn-bg);
+      border: 1px solid var(--warn);
+    }
+
+    .source-audit {
+      margin: 14px 0 20px;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: var(--bg-soft);
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 0.94rem;
+    }
+
+    .source-audit strong { color: var(--text); }
+
+    .source-audit code {
+      color: var(--text);
+      background: var(--card-strong);
+      border: 1px solid var(--border);
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 0.88em;
+    }
+
+    @media (max-width: 780px) {
+      .topbar { align-items: flex-start; flex-direction: column; }
+      .toolbar { justify-content: flex-start; }
+      .grid { grid-template-columns: repeat(2, 1fr); }
+      .question-head { flex-direction: column; }
+      .answer { grid-template-columns: 1fr; }
+      .letter { margin-bottom: 2px; }
+    }
+
+    @media (max-width: 440px) {
+      .app { width: min(100% - 20px, 1120px); padding-top: 16px; }
+      .grid { grid-template-columns: 1fr; }
+      .panel { border-radius: 18px; }
+      .btn { width: 100%; justify-content: center; }
+      .row, .toolbar { width: 100%; }
+    }
+  </style>
 </head>
 <body>
-<div class="app-container">
-    <!-- panel boczny z listą pytań -->
-    <div class="sidebar">
-        <h3>Pytania</h3>
-        <div class="question-list" id="questionList"></div>
-    </div>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Egzamin: bazy danych</h1>
+        <p>Baza pytań zbudowana z zadanie1.zip i zadanie2.zip; duplikaty scalone.</p>
+      </div>
+      <div class="toolbar">
+        <button class="btn" id="themeBtn" type="button">🌙 Tryb ciemny</button>
+        <button class="btn danger" id="clearBtn" type="button">Wyczyść zapis</button>
+      </div>
+    </header>
 
-    <!-- główna karta -->
-    <div class="card">
-        <div class="header">
-            <h1>SOPS · systemy operacyjne</h1>
-            <div class="badge">sprawdzanie odpowiedzi · tryb ciemny · pełne statystyki</div>
-        </div>
+    <section class="panel" id="startView">
+      <h2>Start testu</h2>
+      <p id="dbInfo"></p>
+      <div id="sourceAudit" class="source-audit"></div>
+      <div id="resumeBox" class="empty hidden"></div>
 
-        <!-- PANEL STATYSTYK – wyraźnie pokazuje poprawne, błędne, procent -->
-        <div class="stats-panel">
-            <div class="stat-card">
-                <div class="stat-label">POPRAWNE</div>
-                <div class="stat-value correct" id="correctCount">0</div>
-                <div class="stat-note">odpowiedzi</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">BŁĘDY</div>
-                <div class="stat-value wrong" id="wrongCount">0</div>
-                <div class="stat-note">niepoprawne</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">WYNIK</div>
-                <div class="stat-value percent" id="percentResult">0%</div>
-                <div class="stat-note">skuteczność</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">ROZWIĄZANE</div>
-                <div class="stat-value" id="solvedCount" style="color: #aeaeb2;">0</div>
-                <div class="stat-note">z 41 sprawdzonych</div>
-            </div>
-        </div>
+      <div class="field">
+        <label for="modeSelect">Tryb</label>
+        <select id="modeSelect">
+          <option value="all">Wszystkie pytania</option>
+          <option value="wrong">Tylko pytania rozwiązane wcześniej błędnie</option>
+          <option value="random">Losowa liczba pytań</option>
+        </select>
+      </div>
 
-        <div class="progress-area">
-            <div class="progress-text">
-                <span id="currentIdxSpan">Pytanie 1</span>
-                <span id="totalCountSpan">z 41</span>
-            </div>
-            <div class="progress-bar-bg"><div class="progress-fill" id="progressFill"></div></div>
-        </div>
+      <div class="field hidden" id="randomCountWrap">
+        <label for="randomCount">Liczba pytań do wylosowania</label>
+        <input id="randomCount" type="number" min="1" value="5" />
+      </div>
 
-        <div class="question-panel">
-            <div class="q-num" id="qNum">PYTANIE</div>
-            <div class="q-text" id="questionText"></div>
+      <div class="row">
+        <button class="btn primary" id="startBtn" type="button">Rozpocznij test</button>
+        <button class="btn" id="resumeBtn" type="button">Kontynuuj przerwany test</button>
+      </div>
+    </section>
 
-            <div class="answer-area">
-                <div class="answer-label">Twoja odpowiedź:</div>
-                <textarea id="userAnswer" rows="3" placeholder="Wpisz swoją odpowiedź..."></textarea>
-            </div>
+    <section class="panel hidden" id="quizView" aria-live="polite">
+      <div class="grid" id="statsGrid">
+        <div class="stat"><span class="label">Poprawne</span><span class="value" id="correctStat">0</span></div>
+        <div class="stat"><span class="label">Błędne</span><span class="value" id="wrongStat">0</span></div>
+        <div class="stat"><span class="label">Pozostałe</span><span class="value" id="leftStat">0</span></div>
+        <div class="stat"><span class="label">Skuteczność</span><span class="value" id="percentStat">0%</span></div>
+      </div>
+      <div class="progressline"><div class="progressbar" id="progressBar"></div></div>
+      <div class="question-card" id="questionCard"></div>
+    </section>
 
-            <div class="button-group">
-                <button class="btn btn-primary" id="checkBtn">Sprawdź odpowiedź</button>
-                <button class="btn btn-secondary" id="revealBtn">Pokaż wzorzec</button>
-            </div>
-            <div id="resultArea" class="result-badge" style="display: none;"></div>
-            <div id="modelAnswerDiv" style="margin-top: 12px; font-size: 14px; background: #2c2c2e; border-radius: 20px; padding: 12px 16px; display: none; color: #e5e5ea;"></div>
-        </div>
+    <section class="panel summary hidden" id="summaryView"></section>
+  </main>
 
-        <div class="nav-buttons">
-            <button class="nav-btn" id="prevBtn">← Poprzednie</button>
-            <button class="nav-btn" id="nextBtn">Następne →</button>
-        </div>
-        <footer>Odpowiedzi zapisywane automatycznie. Kliknij numer pytania, aby przejść. Wyniki są liczone na podstawie kliknięcia „Sprawdź odpowiedź”.</footer>
-    </div>
-</div>
+  <script>
+    "use strict";
 
-<script>
-    // ---------- BAZA PYTAŃ I WZORCÓW (41) ----------
-    const questionsData = [
-        { q: "1. Czy proces może przydzielić sobie więcej pamięci niż w RAM?", a: "Tak, dzięki stronicowaniu i przestrzeni wymiany (swap). Proces operuje na adresach wirtualnych mapowanych przez MMU. Brak RAM+swap może jednak spowodować odmowę." },
-        { q: "2. Różnica między systemem czasu rzeczywistego hard real-time a soft real-time?", a: "Hard real-time: przekroczenie terminu jest błędem systemu. Soft real-time: opóźnienie niepożądane, ale nie krytyczne (większość systemów ogólnego przeznaczenia)." },
-        { q: "3. Opisz pracę wsadową z punktu widzenia użytkownika.", a: "Użytkownik przygotowuje zadanie (program + dane) i przekazuje je operatorowi/systemowi. Brak interakcji – wyniki otrzymuje po całkowitym wykonaniu wsadu. Błędy są znane dopiero po czasie." },
-        { q: "4. Różnica między jednoprogramowym a wieloprogramowym systemem wsadowym?", a: "W jednoprogramowym – jeden program w pamięci, procesor czeka na I/O. W wieloprogramowym – kilka zadań w pamięci, procesor może wykonywać inne zadanie podczas oczekiwania na I/O." },
-        { q: "5. Dlaczego shell nie jest częścią jądra?", a: "Shell to zwykły program użytkownika w przestrzeni użytkownika, korzysta z wywołań systemowych. Jądro pracuje w trybie uprzywilejowanym i zarządza zasobami." },
-        { q: "6. Czym jest proces?", a: "Proces to uruchomiony program w pamięci (aktywna postać) z własnym licznikiem rozkazów, rejestrami, stosem i zasobami." },
-        { q: "7. Czy nieskończona pętla w programie zatrzyma system?", a: "Nie, nowoczesne systemy używają przerwań zegarowych, by odebrać procesor i przydzielić go innym procesom." },
-        { q: "8. Przykłady instrukcji uprzywilejowanych.", a: "Instrukcje I/O, blokowanie/odblokowanie przerwań, zmiana wektora przerwań, zmiana rejestrów ochrony pamięci (bazowy/limit)." },
-        { q: "9. Przykład problemu spójności pamięci podręcznej.", a: "Dwa procesory z własnym cache, każdy ma kopię x=5. Procesor A zmienia x na 10, ale B nadal ma starą wartość 5 – odczyt może dać nieaktualny wynik." },
-        { q: "10. Różnica między synchroniczną a asynchroniczną operacją I/O?", a: "Synchroniczna: proces czeka (blokuje się) na zakończenie operacji. Asynchroniczna: operacja tylko rozpoczynana, proces kontynuuje działanie, wynik odbiera później." },
-        { q: "11. Najszybsza i najwolniejsza metoda komunikacji z urządzeniem?", a: "Najwolniejsze: programowane I/O (PIO) – procesor aktywnie czeka. Najszybsze dla dużych bloków: DMA (bez angażowania CPU przy każdym bajcie)." },
-        { q: "12. Przykład procesu w trybie użytkownika i w trybie jądra.", a: "Tryb użytkownika: zwykłe obliczenia arytmetyczne. Tryb jądra: wywołanie systemowe (np. open(), read(), write())." },
-        { q: "13. Co to jest przełączanie kontekstów?", a: "Zmiana aktualnie wykonywanego procesu – zapis stanu bieżącego do PCB (bloku kontrolnego) i odtworzenie stanu innego procesu z jego PCB." },
-        { q: "14. Przykład niepowodzenia (fault).", a: "Dzielenie przez zero, przepełnienie stosu, brak strony w pamięci (page fault), naruszenie ochrony pamięci." },
-        { q: "15. Przykład przejścia procesu z gotowego do zakończonego.", a: "Proces gotowy (w kolejce) zostaje zabity przez inny proces (np. kill -9) – nie musi wchodzić w stan aktywny." },
-        { q: "16. Omów przejścia aktywnego procesu.", a: "Aktywny → Gotowy (upływ kwantu czasu, wywłaszczenie), → Oczekujący (czeka na I/O/zdarzenie), → Zakończony (wywołanie exit() lub błąd krytyczny)." },
-        { q: "17. Funkcje planisty: długo-, krótko- i średnioterminowego.", a: "Długoterminowy: dopuszcza nowe procesy (nowy→gotowy). Krótkoterminowy: wybiera proces z gotowych do wykonania (najważniejszy). Średnioterminowy: swapping (zawieszanie/wznawianie)." },
-        { q: "18. Który planista zawsze musi być w systemie?", a: "Planista krótkoterminowy (planista procesora) – występuje w każdym systemie wielozadaniowym." },
-        { q: "19. Co by było, gdyby proces potomny po fork() wykonał się do końca?", a: "Potomek zakończy się wcześniej. Gdy rodzic wykona wait(), odbierze status zakończonego potomka. Rodzic kontynuuje normalnie." },
-        { q: "20. Przykład procesu w stanach: nowy, gotowy, aktywny, oczekujący, zakończony.", a: "Nowy: tworzony. Gotowy: czeka na procesor. Aktywny: wykonuje się. Oczekujący: czeka na dane z dysku. Zakończony: zakończył działanie (exit)." },
-        { q: "21. Zalety wielowątkowości.", a: "Szybsze tworzenie i zakończenie wątków niż procesów, łatwa komunikacja przez wspólną przestrzeń adresową, lepsze wykorzystanie wielu rdzeni." },
-        { q: "22. Czy można przejść od stanu oczekującego do aktywnego?", a: "Nie bezpośrednio. Najpierw oczekujący→gotowy (po zdarzeniu), potem gotowy→aktywny (przez planistę)." },
-        { q: "23. Przykład przejścia z aktywnego do oczekującego.", a: "Proces wykonuje read() – jeśli dane nie gotowe, zostaje zablokowany (oczekujący) do czasu zakończenia operacji I/O." },
-        { q: "24. Kiedy mówimy o sytuacji wyścigu?", a: "Gdy wynik zależy od nieprzewidywalnej kolejności wykonywania współbieżnych wątków, które współdzielą zasób, a co najmniej jeden go modyfikuje bez synchronizacji." },
-        { q: "25. Warunki poprawnego rozwiązania sekcji krytycznej.", a: "Wzajemne wykluczanie (tylko jeden proces w sekcji), postęp (proces poza sekcją nie blokuje innych), ograniczone czekanie (brak nieskończonego oczekiwania)." },
-        { q: "26. Działanie operacji s.wait() na semaforze zliczającym.", a: "Jeśli s>0, zmniejsza s o 1 i kontynuuje. Jeśli s≤0, wstrzymuje proces (oczekujący) do czasu wykonania s.signal()." },
-        { q: "27. Przykład zakleszczenia (deadlock).", a: "P0: wait(A); wait(B). P1: wait(B); wait(A). Jeśli P0 zajmie A, P1 zajmie B – oba czekają na siebie w nieskończoność." },
-        { q: "28. Definicja zakleszczenia.", a: "Zbiór procesów czeka na zdarzenia, które mogą być spowodowane tylko przez inne procesy z tego samego zbioru – żaden nie może kontynuować." },
-        { q: "29. Przykład zagłodzenia.", a: "Planista zawsze przydziela procesor procesom o wysokim priorytecie – proces o niskim priorytecie może czekać w nieskończoność mimo dostępności procesora." },
-        { q: "30. Problem czytelników i pisarzy.", a: "Współdzielony zasób (czytelnia). Wielu czytelników może czytać jednocześnie, ale pisarz wymaga wyłącznego dostępu (bez czytelników). Synchronizacja unika blokowania czytelników bez potrzeby." },
-        { q: "31. Algorytmy zastępowania stron: LRU, NFU, zegarowy.", a: "LRU: usuwa najdawniej używaną stronę. NFU: usuwa używaną najrzadziej (licznik). Zegarowy: przybliżenie LRU – cykliczne sprawdzanie bitu R, zerowanie i dawanie drugiej szansy." },
-        { q: "32. Anomalia Belady’ego.", a: "Zwiększenie liczby ramek pamięci powoduje wzrost liczby błędów stron (obserwowane dla algorytmu FIFO)." },
-        { q: "33. Co to jest szamotanie (thrashing)?", a: "System spędza większość czasu na przenoszeniu stron między RAM a dyskiem (ciągłe page faulty), zamiast wykonywać instrukcje procesów – zbyt mało ramek na proces." },
-        { q: "34. Jak działa postarzanie (aging) w algorytmie NFU?", a: "Co pewien czas licznik strony jest przesuwany w prawo (dzielony przez 2), a na najstarszy bit wstawiana jest wartość bitu R. Nowsze odwołania mają większe znaczenie – lepsze przybliżenie LRU." },
-        { q: "35. Różnica między FIFO a algorytmem drugiej szansy.", a: "FIFO usuwa najstarszą stronę niezależnie od użycia. Druga szansa: jeśli najstarsza strona ma R=1, zeruje R i trafia na koniec kolejki; usuwa gdy R=0." },
-        { q: "36. Znaczenie bitów D i R w tablicy stron.", a: "R (reference) – strona była ostatnio używana. D (dirty) – strona była modyfikowana. Jeśli D=1, przed usunięciem trzeba zapisać na dysk." },
-        { q: "37. Algorytmy SCAN, C-SCAN, C-LOOK.", a: "SCAN (winda): głowica idzie w jednym kierunku, obsługuje żądania, zawraca. C-SCAN: tylko w jednym kierunku, po końcu wraca bez obsługi. C-LOOK: do ostatniego żądania w kierunku, potem skok do najmniejszego." },
-        { q: "38. Różnica między RAID 4 a RAID 5.", a: "RAID 4: paskowanie danych + dedykowany dysk parzystości (wąskie gardło przy zapisach). RAID 5: parzystość rozproszona po wszystkich dyskach – lepsze rozłożenie obciążenia." },
-        { q: "39. Dlaczego RAID 0 nie jest właściwie macierzą RAID?", a: "RAID = Redundant Array of Independent Disks (z nadmiarowością). RAID 0 nie ma nadmiarowości – awaria jednego dysku powoduje utratę wszystkich danych." },
-        { q: "40. Dlaczego algorytmy szeregowania HDD (np. SSTF) nie mają sensu dla SSD?", a: "W SSD brak mechanicznej głowicy i talerzy – czas dostępu jest prawie jednostajny, więc optymalizacje pozycjonowania są zbędne." },
-        { q: "41. Składowe czasu operacji HDD – które dominują?", a: "Czas pozycjonowania głowicy (seek) i opóźnienie obrotowe (rotational latency) dominują; czas transmisji danych jest zwykle znacznie mniejszy." }
-    ];
+    // =============================================================
+    // BAZA PYTAŃ
+    // Źródło: pytania odczytane z przesłanych archiwów zadanie1.zip i zadanie2.zip.
+    // Pytania wielokrotnego wyboru zostały zamienione na warianty A-D zawierające
+    // poprawny zestaw odpowiedzi, bo aplikacja wymaga dokładnie czterech odpowiedzi.
+    // =============================================================
+    const QUESTIONS = [
+  {
+    "id": "seq_nextval_4x",
+    "source": "zadanie1.zip/1.jpg; zadanie2.zip/3.jpg",
+    "question": "Podaj wartość wygenerowaną przez sekwencję po wykonaniu czterokrotnym polecenia SELECT:\n\nCREATE SEQUENCE seq_gen\nMINVALUE 1\nMAXVALUE 100\nSTART WITH 100\nINCREMENT BY -10\nCACHE 20;\n\nSELECT seq_gen.NEXTVAL FROM DUAL;",
+    "options": [
+      "60",
+      "70",
+      "80",
+      "100"
+    ],
+    "correct": 1,
+    "explanation": "Pierwsze cztery wartości sekwencji to: 100, 90, 80, 70. Po czwartym wywołaniu NEXTVAL wynikiem jest 70."
+  },
+  {
+    "id": "package_body_error",
+    "source": "zadanie1.zip/2.jpg, 3.jpg; zadanie2.zip/5.jpg, 7.jpg",
+    "question": "Dlaczego podany kod pakietu PL/SQL jest niepoprawny?\n\nFragment dotyczy pakietu PAC_EG, w którym w specyfikacji funkcja Null_Stanowisko ma zwracać VARCHAR2, natomiast w ciele funkcji użyto zmiennej ST typu Stanowiska.IDStanowiska%TYPE i zwracana jest ta zmienna. W widocznym fragmencie brakuje też zamknięcia całego ciała pakietu.",
+    "options": [
+      "Procedura powinna mieć parametr.",
+      "W funkcji w zapytaniu SQL powinno być AND S.IDStanowiska IS NULL.",
+      "W procedurze zamiast Marki.nazwa%TYPE powinno być Modele.nazwa%TYPE.",
+      "Funkcja zwraca wartość numeryczną, a w specyfikacji podano wartość znakową, i brakuje END PAC_EG."
+    ],
+    "correct": 3,
+    "explanation": "Najpełniejsza odpowiedź z materiału: niezgodność typu zwracanej wartości względem specyfikacji oraz brak końcowego END PAC_EG dla ciała pakietu."
+  },
+  {
+    "id": "trigger_before_insert",
+    "source": "zadanie1.zip/4.jpg; zadanie2.zip/4.jpg",
+    "question": "Wybierz poprawny kod zamiast kropek:\n\nCREATE TRIGGER TRIG1\n............. ON Pracownicy\nFOR EACH ROW\nBEGIN\n  SELECT NVL(MAX(Idpracownika) + 1, 1)\n  INTO :NEW.Idpracownika\n  FROM Pracownicy;\nEND;",
+    "options": [
+      "BEFORE INSERT",
+      "AFTER INSERT OR UPDATE",
+      "BEFORE UPDATE",
+      "AFTER DELETE OR UPDATE"
+    ],
+    "correct": 0,
+    "explanation": "Wartość :NEW.Idpracownika musi zostać ustawiona przed wstawieniem rekordu, więc używa się wyzwalacza BEFORE INSERT."
+  },
+  {
+    "id": "index_disadvantages",
+    "source": "zadanie1.zip/5.jpg; zadanie2.zip/6.jpg",
+    "question": "Wady indeksów. Który zestaw stwierdzeń jest poprawny?",
+    "options": [
+      "Zajmują przestrzeń dyskową, mogą znacznie spowolnić modyfikację danych i mogą wpływać na współbieżność wykonywanych operacji.",
+      "Nie zajmują dodatkowej przestrzeni, zawsze przyspieszają modyfikację danych i nie wpływają na współbieżność.",
+      "Są wadliwe tylko dlatego, że spowalniają polecenia SELECT, ale nie wpływają na INSERT, UPDATE ani DELETE.",
+      "Ich jedyną wadą jest konieczność tworzenia kluczy obcych przed utworzeniem indeksu."
+    ],
+    "correct": 0,
+    "explanation": "Indeksy przyspieszają część odczytów, ale kosztują miejsce i aktualizacje struktur indeksowych przy operacjach modyfikujących dane."
+  },
+  {
+    "id": "btree_index_characteristics",
+    "source": "zadanie1.zip/8.jpg; zadanie2.zip/8.jpg, 11.jpg",
+    "question": "Czym się charakteryzuje indeks typu B-drzewo? Wybierz poprawny zestaw stwierdzeń.",
+    "options": [
+      "Wykorzystywany dla atrybutów o dużej selektywności; wielkość indeksu słabo zależna od rozmiaru dziedziny indeksowanego atrybutu; nie przechowuje informacji o wartościach nieokreślonych.",
+      "Wykorzystywany dla atrybutów o małej selektywności; rozmiar indeksu ściśle zależny od rozmiaru dziedziny; przechowuje wartości nieokreślone.",
+      "Przeznaczony głównie dla kolumn logicznych TAK/NIE i zawsze przechowuje wartości NULL.",
+      "Nie nadaje się do wyszukiwania zakresowego i działa wyłącznie przy pełnym skanowaniu tabeli."
+    ],
+    "correct": 0,
+    "explanation": "Dla B-drzewa typowe są kolumny o większej selektywności; rozmiar nie jest ściśle zależny od całej dziedziny wartości, a standardowy indeks B-drzewowy nie przechowuje wpisów całkowicie NULL."
+  },
+  {
+    "id": "user_privileges_categories",
+    "source": "zadanie1.zip/6.jpg, 7.jpg; zadanie2.zip/12.jpg, 16.jpg",
+    "question": "Przyporządkować uprawnienia użytkownika do kategorii. Który zestaw jest poprawny?",
+    "options": [
+      "Obiektowe: REFERENCES, INSERT, SELECT, UPDATE, DELETE. Systemowe: UPDATE ANY, CREATE SESSION, CREATE TABLE, SELECT ANY, INSERT ANY.",
+      "Obiektowe: CREATE SESSION, CREATE TABLE, SELECT ANY. Systemowe: REFERENCES, INSERT, SELECT, UPDATE, DELETE.",
+      "Obiektowe: UPDATE ANY, INSERT ANY, SELECT ANY. Systemowe: INSERT, UPDATE, DELETE, REFERENCES.",
+      "Wszystkie wymienione uprawnienia są wyłącznie systemowe."
+    ],
+    "correct": 0,
+    "explanation": "Uprawnienia odnoszące się do konkretnych obiektów, np. SELECT lub INSERT na tabeli, są obiektowe. CREATE SESSION, CREATE TABLE oraz warianty ANY są systemowe."
+  },
+  {
+    "id": "students_subjects_er",
+    "source": "zadanie1.zip/10.jpg, 11.jpg; zadanie2.zip/1.jpg, 2.jpg",
+    "question": "Podać poprawnie definiujący diagram encji: przypisanie studentów do przedmiotów w jednym wybranym semestrze. W określonym semestrze student uczęszcza na wiele przedmiotów.",
+    "options": [
+      "Relacja wiele-do-wielu między encjami Studenci i Przedmioty.",
+      "Relacja jeden-do-jednego między encjami Studenci i Przedmioty.",
+      "Relacja, w której wiele encji Studenci przypada na jeden Przedmiot, ale student nie może mieć wielu przedmiotów.",
+      "Brak relacji między encjami; przypisanie należy pominąć."
+    ],
+    "correct": 0,
+    "explanation": "Przypisanie studentów do przedmiotów oznacza, że student może mieć wiele przedmiotów, a przedmiot może dotyczyć wielu studentów, więc modelowo jest to relacja M:N."
+  },
+  {
+    "id": "data_integrity",
+    "source": "zadanie2.zip/13.jpg, 17.jpg",
+    "question": "Wybrać poprawne stwierdzenie opisujące integralność danych. Który zestaw jest poprawny?",
+    "options": [
+      "To zapewnienie kompletności, poprawności i wiarygodności danych zgromadzonych w bazie oraz odpowiedniości między faktami w bazie a światem rzeczywistym.",
+      "To wyłącznie tabele z kluczami głównymi.",
+      "To możliwość formułowania poprawnych składniowo zapytań SQL.",
+      "To wyłącznie mechanizm sortowania rekordów w tabeli."
+    ],
+    "correct": 0,
+    "explanation": "Integralność danych dotyczy jakości i zgodności danych z rzeczywistością, a nie samej składni zapytań ani samego istnienia kluczy głównych."
+  },
+  {
+    "id": "transaction_endings",
+    "source": "zadanie1.zip/9.jpg; zadanie2.zip/9.jpg",
+    "question": "Jakie są sposoby zakończenia transakcji? Wybierz poprawny zestaw.",
+    "options": [
+      "Zatwierdzanie (COMMIT), samo-wycofanie (ROLLBACK), przerwanie przez SZBD (ABORT).",
+      "Przerwanie przez inną transakcję, zatwierdzanie przez inną transakcję, wycofanie przez inną transakcję.",
+      "Tylko COMMIT; ROLLBACK nie kończy transakcji.",
+      "Tylko ROLLBACK; COMMIT jest operacją odczytu."
+    ],
+    "correct": 0,
+    "explanation": "Klasyczne zakończenia transakcji to zatwierdzenie, wycofanie przez użytkownika/program lub przerwanie przez system zarządzania bazą danych."
+  },
+  {
+    "id": "relational_design_order",
+    "source": "zadanie2.zip/14.jpg",
+    "question": "Określić kolejność projektowania relacyjnej bazy danych. Która kolejność jest poprawna?",
+    "options": [
+      "1. Analiza wymagań → 2. Tworzenie koncepcyjnego schematu bazy danych → 3. Projektowanie logicznego schematu bazy danych → 4. Implementacja → 5. Analiza końcowa.",
+      "1. Implementacja → 2. Analiza końcowa → 3. Analiza wymagań → 4. Projektowanie logiczne → 5. Schemat koncepcyjny.",
+      "1. Projektowanie logiczne → 2. Implementacja → 3. Analiza wymagań → 4. Analiza końcowa → 5. Schemat koncepcyjny.",
+      "1. Analiza końcowa → 2. Implementacja → 3. Analiza wymagań → 4. Schemat koncepcyjny → 5. Projektowanie logiczne."
+    ],
+    "correct": 0,
+    "explanation": "Najpierw ustala się wymagania, potem model koncepcyjny, następnie schemat logiczny, implementację i dopiero ocenę końcową."
+  },
+  {
+    "id": "bitmap_index_characteristics",
+    "source": "zadanie2.zip/15.jpg",
+    "question": "Czym się charakteryzuje indeks bitmapowy? Wybierz poprawny zestaw stwierdzeń.",
+    "options": [
+      "Rozmiar indeksu ściśle zależny od rozmiaru dziedziny atrybutu indeksu; przechowuje wartości nieokreślone; wykorzystywany dla atrybutów o małej selektywności.",
+      "Wykorzystywany dla atrybutów o dużej selektywności; wielkość indeksu słabo zależna od rozmiaru dziedziny; nie przechowuje wartości nieokreślonych.",
+      "Jest odpowiednikiem indeksu B-drzewo i zawsze służy głównie do kluczy głównych o unikalnych wartościach.",
+      "Nie zależy od liczby różnych wartości i jest najlepszy dla kolumn z samymi wartościami unikalnymi."
+    ],
+    "correct": 0,
+    "explanation": "Indeks bitmapowy jest typowy dla niskiej selektywności/małej liczby różnych wartości; jego rozmiar zależy od liczby wartości w dziedzinie i może obejmować wartości NULL."
+  }
+ ];
 
-    // ------------------- STANY ------------------
-    let currentIndex = 0;
-    const STORAGE_RESULTS = "sops_results_final";
-    const STORAGE_ANSWERS = "sops_user_answers_final";
-    let results = new Array(questionsData.length).fill(null);   // null = niesprawdzone, true = poprawne, false = błędne
-    let userAnswers = new Array(questionsData.length).fill("");
+    const SOURCE_AUDIT = {
+      totalQuestions: QUESTIONS.length,
+      zadanie2Included: QUESTIONS.filter(q => q.source.includes("zadanie2.zip")).length,
+      zadanie2UniqueOnly: QUESTIONS.filter(q => q.source.startsWith("zadanie2.zip")).length,
+      zadanie2Files: [
+        "1.jpg i 2.jpg — diagram ER: Studenci–Przedmioty",
+        "3.jpg — sekwencja seq_gen / NEXTVAL",
+        "4.jpg — trigger TRIG1 / BEFORE INSERT",
+        "5.jpg i 7.jpg — pakiet PL/SQL PAC_EG",
+        "6.jpg — wady indeksów",
+        "8.jpg i 11.jpg — indeks typu B-drzewo",
+        "9.jpg — zakończenia transakcji",
+        "12.jpg i 16.jpg — uprawnienia użytkownika",
+        "13.jpg i 17.jpg — integralność danych",
+        "14.jpg — kolejność projektowania relacyjnej bazy danych",
+        "15.jpg — indeks bitmapowy"
+      ]
+    };
 
-    // Elementy DOM
-    const questionTextEl = document.getElementById("questionText");
-    const qNumEl = document.getElementById("qNum");
-    const userAnswerTextarea = document.getElementById("userAnswer");
-    const checkBtn = document.getElementById("checkBtn");
-    const revealBtn = document.getElementById("revealBtn");
-    const resultArea = document.getElementById("resultArea");
-    const modelAnswerDiv = document.getElementById("modelAnswerDiv");
-    const prevBtn = document.getElementById("prevBtn");
-    const nextBtn = document.getElementById("nextBtn");
-    const progressFill = document.getElementById("progressFill");
-    const currentIdxSpan = document.getElementById("currentIdxSpan");
-    const totalCountSpan = document.getElementById("totalCountSpan");
-    const questionListDiv = document.getElementById("questionList");
-    const correctCountSpan = document.getElementById("correctCount");
-    const wrongCountSpan = document.getElementById("wrongCount");
-    const percentResultSpan = document.getElementById("percentResult");
-    const solvedCountSpan = document.getElementById("solvedCount");
+    const STORAGE_KEY = "db_exam_app_state_v2_zadanie2";
+    const THEME_KEY = "db_exam_app_theme_v1";
+    const LETTERS = ["A", "B", "C", "D"];
 
-    // ---------- Funkcje pomocnicze ----------
-    function loadData() {
-        const storedResults = localStorage.getItem(STORAGE_RESULTS);
-        if (storedResults) {
-            try {
-                const parsed = JSON.parse(storedResults);
-                if (Array.isArray(parsed) && parsed.length === questionsData.length) results = parsed;
-            } catch(e) {}
-        }
-        const storedAnswers = localStorage.getItem(STORAGE_ANSWERS);
-        if (storedAnswers) {
-            try {
-                const parsed = JSON.parse(storedAnswers);
-                if (Array.isArray(parsed) && parsed.length === questionsData.length) userAnswers = parsed;
-            } catch(e) {}
-        }
-        if (userAnswerTextarea) userAnswerTextarea.value = userAnswers[currentIndex] || "";
-    }
+    let appData = loadData();
 
-    function saveAll() {
-        localStorage.setItem(STORAGE_RESULTS, JSON.stringify(results));
-        localStorage.setItem(STORAGE_ANSWERS, JSON.stringify(userAnswers));
-    }
+    const els = {
+      startView: document.getElementById("startView"),
+      quizView: document.getElementById("quizView"),
+      summaryView: document.getElementById("summaryView"),
+      dbInfo: document.getElementById("dbInfo"),
+      sourceAudit: document.getElementById("sourceAudit"),
+      resumeBox: document.getElementById("resumeBox"),
+      modeSelect: document.getElementById("modeSelect"),
+      randomCountWrap: document.getElementById("randomCountWrap"),
+      randomCount: document.getElementById("randomCount"),
+      startBtn: document.getElementById("startBtn"),
+      resumeBtn: document.getElementById("resumeBtn"),
+      clearBtn: document.getElementById("clearBtn"),
+      themeBtn: document.getElementById("themeBtn"),
+      questionCard: document.getElementById("questionCard"),
+      correctStat: document.getElementById("correctStat"),
+      wrongStat: document.getElementById("wrongStat"),
+      leftStat: document.getElementById("leftStat"),
+      percentStat: document.getElementById("percentStat"),
+      progressBar: document.getElementById("progressBar")
+    };
 
-    function syncCurrentAnswer() {
-        if (userAnswerTextarea) {
-            userAnswers[currentIndex] = userAnswerTextarea.value;
-            saveAll();
-        }
-    }
-
-    // Aktualizacja statystyk (poprawne, błędne, procent, rozwiązane)
-    function updateStats() {
-        let correct = 0, wrong = 0;
-        for (let i = 0; i < results.length; i++) {
-            if (results[i] === true) correct++;
-            else if (results[i] === false) wrong++;
-        }
-        const solved = correct + wrong;
-        const percent = solved === 0 ? 0 : Math.round((correct / solved) * 100);
-        if (correctCountSpan) correctCountSpan.innerText = correct;
-        if (wrongCountSpan) wrongCountSpan.innerText = wrong;
-        if (percentResultSpan) percentResultSpan.innerText = `${percent}%`;
-        if (solvedCountSpan) solvedCountSpan.innerText = `${solved}`;
-        
-        // aktualizacja kolorów w bocznym panelu
-        document.querySelectorAll('.q-item').forEach((item, idx) => {
-            item.classList.remove('correct', 'wrong', 'untouched');
-            if (results[idx] === true) item.classList.add('correct');
-            else if (results[idx] === false) item.classList.add('wrong');
-            else item.classList.add('untouched');
-        });
-    }
-
-    function updateProgressAndCounter() {
-        const percent = ((currentIndex + 1) / questionsData.length) * 100;
-        if (progressFill) progressFill.style.width = `${percent}%`;
-        if (currentIdxSpan) currentIdxSpan.innerText = `Pytanie ${currentIndex+1}`;
-        if (totalCountSpan) totalCountSpan.innerText = `z ${questionsData.length}`;
-        if (qNumEl) qNumEl.innerText = `PYTANIE ${currentIndex+1} / ${questionsData.length}`;
-        document.querySelectorAll('.q-item').forEach((item, idx) => {
-            if (idx === currentIndex) item.classList.add('active');
-            else item.classList.remove('active');
-        });
-    }
-
-    // Inteligentne porównanie odpowiedzi
-    function isAnswerCorrect(userAnswer, modelAnswer) {
-        const norm = (s) => s.toLowerCase()
-            .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
-            .replace(/\s+/g, ' ')
-            .trim();
-        const userNorm = norm(userAnswer);
-        const modelNorm = norm(modelAnswer);
-        if (userNorm === modelNorm) return true;
-        if (userNorm.length === 0) return false;
-        if (userNorm.length < 20) {
-            if (modelNorm.includes(userNorm)) return true;
-            const userWords = userNorm.split(/\s+/);
-            let matchCount = 0;
-            for (let w of userWords) {
-                if (w.length > 2 && modelNorm.includes(w)) matchCount++;
-            }
-            if (matchCount >= userWords.length * 0.5) return true;
-        }
-        const wordsUser = new Set(userNorm.split(/\s+/));
-        const wordsModel = new Set(modelNorm.split(/\s+/));
-        let intersection = 0;
-        for (let w of wordsUser) {
-            if (wordsModel.has(w)) intersection++;
-        }
-        let union = wordsUser.size + wordsModel.size - intersection;
-        if (union === 0) return false;
-        const jaccard = intersection / union;
-        const keyPhrases = modelAnswer.split(/[.;]/).slice(0,3).map(p => norm(p)).filter(p => p.length > 8);
-        let containsKey = false;
-        for (let phrase of keyPhrases) {
-            if (userNorm.includes(phrase)) { containsKey = true; break; }
-        }
-        return (jaccard >= 0.35) || containsKey;
-    }
-
-    function checkAnswer() {
-        const userAns = userAnswerTextarea.value.trim();
-        const modelAns = questionsData[currentIndex].a;
-        const correct = isAnswerCorrect(userAns, modelAns);
-        results[currentIndex] = correct;
-        saveAll();
-        resultArea.style.display = "block";
-        if (correct) {
-            resultArea.textContent = "✓ Poprawnie";
-            resultArea.className = "result-badge result-correct";
-        } else {
-            resultArea.textContent = "✗ Niepoprawnie";
-            resultArea.className = "result-badge result-wrong";
-        }
-        updateStats();
-    }
-
-    function revealModel() {
-        const modelText = questionsData[currentIndex].a;
-        modelAnswerDiv.style.display = "block";
-        modelAnswerDiv.innerHTML = `<strong>📖 Wzorcowa odpowiedź:</strong><br>${modelText}`;
-    }
-
-    function loadQuestion(index) {
-        syncCurrentAnswer();
-        currentIndex = index;
-        questionTextEl.innerText = questionsData[currentIndex].q;
-        userAnswerTextarea.value = userAnswers[currentIndex] || "";
-        resultArea.style.display = "none";
-        modelAnswerDiv.style.display = "none";
-        modelAnswerDiv.innerHTML = "";
-        updateProgressAndCounter();
-        updateStats();  // odświeżenie paska bocznego i statystyk po ewentualnej zmianie
-    }
-
-    function goToQuestion(index) {
-        if (index >= 0 && index < questionsData.length) loadQuestion(index);
-    }
-
-    function buildSidebar() {
-        questionListDiv.innerHTML = "";
-        for (let i = 0; i < questionsData.length; i++) {
-            const item = document.createElement("div");
-            let statusClass = "untouched";
-            if (results[i] === true) statusClass = "correct";
-            else if (results[i] === false) statusClass = "wrong";
-            item.className = `q-item ${statusClass}`;
-            if (i === currentIndex) item.classList.add("active");
-            item.textContent = i+1;
-            item.addEventListener("click", (function(idx) { return function() { goToQuestion(idx); }; })(i));
-            questionListDiv.appendChild(item);
-        }
-    }
-
-    // ---------- Inicjalizacja ----------
-    function init() {
-        loadData();
-        buildSidebar();
-        updateStats();
-        updateProgressAndCounter();
-        loadQuestion(currentIndex);
-        
-        userAnswerTextarea.addEventListener("input", () => {
-            userAnswers[currentIndex] = userAnswerTextarea.value;
-            saveAll();
-        });
-        checkBtn.addEventListener("click", checkAnswer);
-        revealBtn.addEventListener("click", revealModel);
-        prevBtn.addEventListener("click", () => { if (currentIndex > 0) goToQuestion(currentIndex - 1); });
-        nextBtn.addEventListener("click", () => { if (currentIndex < questionsData.length - 1) goToQuestion(currentIndex + 1); });
-    }
     init();
-</script>
+
+    function init() {
+      applySavedTheme();
+      wireEvents();
+      repairProgressIfNeeded();
+      renderStart();
+    }
+
+    function wireEvents() {
+      els.modeSelect.addEventListener("change", () => {
+        els.randomCountWrap.classList.toggle("hidden", els.modeSelect.value !== "random");
+      });
+
+      els.startBtn.addEventListener("click", () => startNewTest());
+      els.resumeBtn.addEventListener("click", () => resumeTest());
+      els.clearBtn.addEventListener("click", () => clearSavedProgress());
+      els.themeBtn.addEventListener("click", () => toggleTheme());
+    }
+
+    function defaultData() {
+      return {
+        progress: null,
+        historyWrongIds: []
+      };
+    }
+
+    function loadData() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return defaultData();
+        const parsed = JSON.parse(raw);
+        return {
+          progress: parsed.progress || null,
+          historyWrongIds: Array.isArray(parsed.historyWrongIds) ? parsed.historyWrongIds : []
+        };
+      } catch (error) {
+        console.warn("Nie udało się odczytać localStorage — tworzę świeży stan.", error);
+        return defaultData();
+      }
+    }
+
+    function saveData() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    }
+
+    function repairProgressIfNeeded() {
+      const validIds = new Set(QUESTIONS.map(q => q.id));
+      appData.historyWrongIds = appData.historyWrongIds.filter(id => validIds.has(id));
+
+      if (!appData.progress) {
+        saveData();
+        return;
+      }
+
+      const orderOk = Array.isArray(appData.progress.order) &&
+        appData.progress.order.length > 0 &&
+        appData.progress.order.every(id => validIds.has(id));
+
+      if (!orderOk) appData.progress = null;
+      saveData();
+    }
+
+    function renderStart(message = "") {
+      showOnly("start");
+      els.dbInfo.textContent = `Wczytano ${QUESTIONS.length} unikalnych pytań. Z zadanie2.zip uwzględniono ${SOURCE_AUDIT.zadanie2Included} pozycji; ${SOURCE_AUDIT.zadanie2UniqueOnly} pytania występują wyłącznie w zadanie2.zip. Lista do powtórki: ${appData.historyWrongIds.length}.`;
+      els.sourceAudit.innerHTML = `<strong>Audyt zadanie2.zip:</strong> ${SOURCE_AUDIT.zadanie2Files.map(x => `<code>${x}</code>`).join(" ")}`;
+      els.randomCount.max = String(QUESTIONS.length);
+      els.randomCount.value = Math.min(Number(els.randomCount.value) || 5, QUESTIONS.length);
+
+      const canResume = Boolean(appData.progress && !appData.progress.finished);
+      els.resumeBtn.classList.toggle("hidden", !canResume);
+
+      if (canResume) {
+        const stats = computeStats(appData.progress);
+        els.resumeBox.classList.remove("hidden");
+        els.resumeBox.textContent = `Masz przerwany test: ${stats.answered}/${stats.total} odpowiedzi, wynik bieżący ${stats.percent}%. Możesz kontynuować dokładnie od ostatniego pytania.`;
+      } else if (message) {
+        els.resumeBox.classList.remove("hidden");
+        els.resumeBox.textContent = message;
+      } else {
+        els.resumeBox.classList.add("hidden");
+        els.resumeBox.textContent = "";
+      }
+    }
+
+    function startNewTest() {
+      const mode = els.modeSelect.value;
+      let selectedIds = QUESTIONS.map(q => q.id);
+
+      if (mode === "wrong") {
+        selectedIds = appData.historyWrongIds.slice();
+        if (selectedIds.length === 0) {
+          renderStart("Nie masz jeszcze zapisanych błędnych pytań. Najpierw rozwiąż test i popełnij błąd — brutalne, ale prawdziwe.");
+          return;
+        }
+      }
+
+      if (mode === "random") {
+        const requested = Number(els.randomCount.value);
+        if (!Number.isInteger(requested) || requested < 1 || requested > QUESTIONS.length) {
+          renderStart(`Podaj liczbę od 1 do ${QUESTIONS.length}.`);
+          return;
+        }
+        selectedIds = shuffle(selectedIds).slice(0, requested);
+      } else {
+        selectedIds = shuffle(selectedIds);
+      }
+
+      appData.progress = {
+        active: true,
+        finished: false,
+        mode,
+        order: selectedIds,
+        currentIndex: 0,
+        answers: {},
+        stats: { correct: 0, wrong: 0, remaining: selectedIds.length, percent: 0 },
+        startedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      saveData();
+      renderQuiz();
+    }
+
+    function resumeTest() {
+      if (!appData.progress) return renderStart();
+      if (appData.progress.finished) return renderSummary();
+      renderQuiz();
+    }
+
+    function renderQuiz() {
+      showOnly("quiz");
+      const state = appData.progress;
+      if (!state) return renderStart();
+      if (state.finished) return renderSummary();
+
+      const question = getCurrentQuestion();
+      if (!question) return renderStart("Nie udało się odtworzyć pytania. Zapis został zresetowany.");
+
+      renderStats();
+
+      // Wymuszenie ponownej animacji karty po przejściu do kolejnego pytania.
+      els.questionCard.classList.remove("question-card");
+      void els.questionCard.offsetWidth;
+      els.questionCard.classList.add("question-card");
+      els.questionCard.innerHTML = "";
+
+      const answered = state.answers[question.id];
+      const wrapper = document.createElement("div");
+
+      const head = document.createElement("div");
+      head.className = "question-head";
+
+      const title = document.createElement("div");
+      title.innerHTML = `<span class="pill">Pytanie ${state.currentIndex + 1} / ${state.order.length}</span>`;
+
+      const source = document.createElement("span");
+      source.className = "pill";
+      source.textContent = `Źródło: ${question.source}`;
+
+      head.append(title, source);
+
+      const qText = document.createElement("p");
+      qText.className = "question-text";
+      qText.textContent = question.question;
+
+      const answersBox = document.createElement("div");
+      answersBox.className = "answers";
+
+      question.options.forEach((answerText, index) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "answer";
+        btn.disabled = Boolean(answered);
+        btn.setAttribute("data-index", String(index));
+
+        const letter = document.createElement("span");
+        letter.className = "letter";
+        letter.textContent = LETTERS[index];
+
+        const text = document.createElement("span");
+        text.textContent = answerText;
+
+        btn.append(letter, text);
+
+        if (answered) {
+          if (index === question.correct) btn.classList.add("correct");
+          if (index === answered.selected && index !== question.correct) btn.classList.add("wrong");
+          if (index === answered.selected) btn.classList.add("selected");
+        } else {
+          btn.addEventListener("click", () => answerQuestion(index));
+        }
+
+        answersBox.appendChild(btn);
+      });
+
+      const feedback = document.createElement("div");
+      feedback.className = "feedback";
+      if (answered) {
+        feedback.classList.add("show", answered.isCorrect ? "ok" : "no");
+        feedback.textContent = answered.isCorrect
+          ? `Poprawnie. ${question.explanation}`
+          : `Błędnie. Poprawna odpowiedź: ${LETTERS[question.correct]}. ${question.explanation}`;
+      }
+
+      const actions = document.createElement("div");
+      actions.className = "row";
+
+      const next = document.createElement("button");
+      next.type = "button";
+      next.className = "btn primary";
+      next.textContent = state.currentIndex === state.order.length - 1 ? "Zakończ test" : "Dalej";
+      next.disabled = !answered;
+      next.addEventListener("click", () => goNext());
+
+      const restart = document.createElement("button");
+      restart.type = "button";
+      restart.className = "btn";
+      restart.textContent = "Przerwij i wróć do startu";
+      restart.addEventListener("click", () => {
+        appData.progress = null;
+        saveData();
+        renderStart("Test przerwany. Lista błędnych pytań została zachowana.");
+      });
+
+      actions.append(next, restart);
+
+      const sourceNote = document.createElement("div");
+      sourceNote.className = "source-note";
+      sourceNote.textContent = `Id pytania: ${question.id}. Wewnętrzne źródło: ${question.source}.`;
+
+      wrapper.append(head, qText, answersBox, feedback, actions, sourceNote);
+      els.questionCard.appendChild(wrapper);
+    }
+
+    function answerQuestion(selectedIndex) {
+      const state = appData.progress;
+      const question = getCurrentQuestion();
+      if (!state || !question || state.answers[question.id]) return;
+
+      const isCorrect = selectedIndex === question.correct;
+      state.answers[question.id] = {
+        selected: selectedIndex,
+        correct: question.correct,
+        isCorrect,
+        answeredAt: new Date().toISOString()
+      };
+
+      // Lista błędnych pytań działa jak realna lista do powtórki:
+      // błąd dodaje pytanie, późniejsza dobra odpowiedź usuwa je z listy.
+      const wrongSet = new Set(appData.historyWrongIds);
+      if (isCorrect) wrongSet.delete(question.id);
+      else wrongSet.add(question.id);
+      appData.historyWrongIds = [...wrongSet];
+
+      state.updatedAt = new Date().toISOString();
+      state.stats = computeStats(state);
+      saveData();
+      renderQuiz();
+    }
+
+    function goNext() {
+      const state = appData.progress;
+      if (!state) return;
+
+      if (state.currentIndex < state.order.length - 1) {
+        state.currentIndex += 1;
+        state.updatedAt = new Date().toISOString();
+        saveData();
+        renderQuiz();
+      } else {
+        state.finished = true;
+        state.active = false;
+        state.stats = computeStats(state);
+        state.finishedAt = new Date().toISOString();
+        saveData();
+        renderSummary();
+      }
+    }
+
+    function renderStats() {
+      const stats = computeStats(appData.progress);
+      els.correctStat.textContent = String(stats.correct);
+      els.wrongStat.textContent = String(stats.wrong);
+      els.leftStat.textContent = String(stats.remaining);
+      els.percentStat.textContent = `${stats.percent}%`;
+      els.progressBar.style.width = `${stats.total ? (stats.answered / stats.total) * 100 : 0}%`;
+    }
+
+    function renderSummary() {
+      showOnly("summary");
+      const state = appData.progress;
+      const stats = computeStats(state);
+      const grade = verbalGrade(stats.percent);
+
+      els.summaryView.innerHTML = "";
+
+      const title = document.createElement("h2");
+      title.textContent = "Podsumowanie testu";
+
+      const score = document.createElement("div");
+      score.className = "summary-score";
+      score.textContent = `${stats.percent}%`;
+
+      const desc = document.createElement("p");
+      desc.innerHTML = `Ocena: <strong>${grade}</strong>`;
+
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      grid.innerHTML = `
+        <div class="stat"><span class="label">Wszystkie pytania</span><span class="value">${stats.total}</span></div>
+        <div class="stat"><span class="label">Poprawne</span><span class="value">${stats.correct}</span></div>
+        <div class="stat"><span class="label">Błędne</span><span class="value">${stats.wrong}</span></div>
+        <div class="stat"><span class="label">Do powtórki</span><span class="value">${appData.historyWrongIds.length}</span></div>
+      `;
+
+      const actions = document.createElement("div");
+      actions.className = "row";
+      actions.style.justifyContent = "center";
+
+      const restartAll = document.createElement("button");
+      restartAll.type = "button";
+      restartAll.className = "btn primary";
+      restartAll.textContent = "Rozpocznij od nowa";
+      restartAll.addEventListener("click", () => {
+        els.modeSelect.value = "all";
+        els.randomCountWrap.classList.add("hidden");
+        startNewTest();
+      });
+
+      const chooseMode = document.createElement("button");
+      chooseMode.type = "button";
+      chooseMode.className = "btn";
+      chooseMode.textContent = "Wróć do wyboru trybu";
+      chooseMode.addEventListener("click", () => {
+        appData.progress = null;
+        saveData();
+        renderStart();
+      });
+
+      actions.append(restartAll, chooseMode);
+      els.summaryView.append(title, score, desc, grid, actions);
+    }
+
+    function computeStats(state) {
+      if (!state) return { total: 0, answered: 0, correct: 0, wrong: 0, remaining: 0, percent: 0 };
+      const answers = Object.values(state.answers || {});
+      const correct = answers.filter(a => a.isCorrect).length;
+      const wrong = answers.filter(a => !a.isCorrect).length;
+      const total = state.order.length;
+      const answered = answers.length;
+      const remaining = Math.max(total - answered, 0);
+      const percent = answered === 0 ? 0 : Math.round((correct / answered) * 100);
+      return { total, answered, correct, wrong, remaining, percent };
+    }
+
+    function getCurrentQuestion() {
+      const state = appData.progress;
+      if (!state) return null;
+      const id = state.order[state.currentIndex];
+      return QUESTIONS.find(q => q.id === id) || null;
+    }
+
+    function shuffle(array) {
+      const copy = array.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function verbalGrade(percent) {
+      if (percent >= 90) return "bardzo dobrze";
+      if (percent >= 75) return "dobrze";
+      if (percent >= 50) return "dostatecznie";
+      return "do poprawy";
+    }
+
+    function showOnly(view) {
+      els.startView.classList.toggle("hidden", view !== "start");
+      els.quizView.classList.toggle("hidden", view !== "quiz");
+      els.summaryView.classList.toggle("hidden", view !== "summary");
+    }
+
+    function clearSavedProgress() {
+      const ok = confirm("Wyczyścić zapisany postęp, statystyki i listę błędnych pytań?");
+      if (!ok) return;
+      appData = defaultData();
+      saveData();
+      renderStart("Zapis został wyczyszczony.");
+    }
+
+    function applySavedTheme() {
+      const saved = localStorage.getItem(THEME_KEY) || "light";
+      document.documentElement.setAttribute("data-theme", saved === "dark" ? "dark" : "light");
+      updateThemeButton();
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute("data-theme") || "light";
+      const next = current === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem(THEME_KEY, next);
+      updateThemeButton();
+    }
+
+    function updateThemeButton() {
+      const current = document.documentElement.getAttribute("data-theme") || "light";
+      els.themeBtn.textContent = current === "dark" ? "☀️ Tryb jasny" : "🌙 Tryb ciemny";
+    }
+  </script>
 </body>
 </html>
